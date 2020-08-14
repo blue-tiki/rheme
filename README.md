@@ -12,7 +12,7 @@ Rheme differs from R4RS in two ways:
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-2. Numeric literals use Ruby syntax. "`0.`", "`0f0`", and "`#b0`" are not valid numbers.
+2. Numeric literals use Ruby syntax. `0.`, `0f0`, and `#b0` are not valid numbers.
 
 There are other relatively minor differences. For example, Rheme's `call/cc` fails the "yin yang puzzle" test but works in most cases.
 
@@ -32,11 +32,11 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   (fun 1 2 3)  =>  (1 (2 3))
   (fun)        =>  (#f ())
   ```
-* Rheme has a `format` fuction similar to the one in MIT Scheme which accepts "`~A`", "`~S`", and "`~%`" as well as the Ruby format specifiers.
+* Rheme has a `format` fuction similar to the one in MIT Scheme which accepts `~A`, `~S`, and `~%` as well as the Ruby format specifiers.
   ```lisp
   (format #f "~S:  $%.2f~%" 'hat 5)  =>  "hat:  $5.00\n"
   ```
-* Rheme implements `trace` and `untrace` which turn on and off messages printed when a procedure is enterepd and exited.
+* Rheme implements `trace` and `untrace` which turn on and off messages printed when a procedure is entered and exited.
   ```lisp
   (trace / +)
 
@@ -59,7 +59,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
    7
   3
   ```
-* 'load' takes an optional second argument which turns on tracing for top-level evaluation.
+* '`load`' takes an optional second argument which turns on tracing for top-level evaluation.
 
 * Rheme implements the Common Lisp bitwise logical operators `logand`, `logior`, `logxor`, and `lognot`.
   ```lisp
