@@ -19,13 +19,13 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
 ### Extensions to R4RS
 
 * Rheme implements unhygienic macros with `define-macro`.
-  ```scheme
+  ```
   (define-macro (prog1 first . rest)
     (let ((val (gensym)))
       `(let ((,val ,first)) ,@rest ,val)))
   ```
 * Lambda expressions accept `#!optional and #!rest` arguments as in MIT Scheme.
-  ```scheme
+  ```
   (define (fun #!optional a #!rest b)
     (list a b))
 
@@ -33,11 +33,11 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   (fun)        =>  (#f ())
   ```
 * Rheme has a `format` fuction similar to the one in MIT Scheme which accepts `~A`, `~S`, and `~%` as well as the Ruby format specifiers.
-  ```scheme
+  ```
   (format #f "~S:  $%.2f~%" 'hat 5)  =>  "hat:  $5.00\n"
   ```
 * Rheme implements `trace` and `untrace` which turn on and off messages printed when a procedure is entered and exited.
-  ```scheme
+  ```
   (trace / +)
 
   (- 10 (/ 12 (* 2 (+ 1 2))))
@@ -48,7 +48,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   8
   ```
 * `trace-eval` and `untrace-eval` turn on and off tracing for the evaluator.
-  ```scheme
+  ```
   (untrace +)
   (trace-eval)
 
@@ -62,7 +62,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
 * '`load`' takes an optional second argument which turns on tracing for top-level evaluation.
 
 * Rheme implements the Common Lisp bitwise logical operators `logand`, `logior`, `logxor`, and `lognot`.
-  ```scheme
+  ```
   (logand -4 15)  =>  12
   ```
 
