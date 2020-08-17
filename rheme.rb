@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = 0.2
+$rheme_version = '0.2.1'
 
 require 'mathn'
 require 'readline'
@@ -208,6 +208,7 @@ $predefined_symbols = {
   :eqv?        => lambda {|x,y|  rheme_eqv(x, y)},
   :even?       => lambda {|x|    x.even?},
   :exact?      => lambda {|x|    rheme_exact?(x)},
+  :exit        => lambda {|x=1|  exit!(x)},
   :exp         => lambda {|x|    Math.exp(x)},
   :expt        => lambda {|x,y|  x ** y},
   :floor       => lambda {|x|    x.floor},
@@ -245,7 +246,7 @@ $predefined_symbols = {
   :pair?       => lambda {|x|    x.instance_of?(Array) && !x.empty?},
   :positive?   => lambda {|x|    x > 0},
   :procedure?  => lambda {|x|    x.is_a?(Proc)},
-  :quit        => lambda {|x=1|  exit(x)},
+  :quit        => lambda {||     raise SystemExit},
   :quotient    => lambda {|x,y|  (x / y).truncate},
   :random      => lambda {|x|    rand(x)},
   :rational?   => lambda {|x|    x.is_a?(Numeric) && x == x.real},
@@ -676,6 +677,7 @@ $predefined_symbols = {
       repl_port.scanner.terminate if val.nil?
       puts to_string(val) unless val.nil?
     end
+  rescue SystemExit
   end
 
   def toplevel_eval(expr)
