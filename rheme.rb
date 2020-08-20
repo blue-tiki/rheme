@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.1'
+$rheme_version = '0.2.2'
 
 require 'mathn'
 require 'readline'
@@ -248,7 +248,7 @@ $predefined_symbols = {
   :procedure?  => lambda {|x|    x.is_a?(Proc)},
   :quit        => lambda {||     raise SystemExit},
   :quotient    => lambda {|x,y|  (x / y).truncate},
-  :random      => lambda {|x|    rand(x)},
+  :random      => lambda {|*x|   rand(*x)},
   :rational?   => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :read        => lambda {|x=$stdin_port| rheme_read(x)},
   :real?       => lambda {|x|    x.is_a?(Numeric) && x == x.real},
@@ -294,7 +294,7 @@ $predefined_symbols = {
   :"eof-object?"      => lambda {|x|       x == :EOF},
   :"exact->inexact"   => lambda {|x|       x.to_f},
   :"for-each"         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
-  :"imaginary-part"   => lambda {|x|       x.imaginary},
+  :"imag-part"        => lambda {|x|       x.imaginary},
   :"inexact->exact"   => lambda {|x|       x.rationalize},
   :"input-port?"      => lambda {|x|       x.is_a?(InputPort)},
   :"integer->char"    => lambda {|x|       RChar.new(x.chr)},
@@ -772,7 +772,7 @@ $predefined_symbols = {
 end
 
 #
-# Remaining R4RS Essential Procedures
+# Other R4RS Essential Procedures
 #
 
 Rheme.reval_stream <<EOD
