@@ -61,10 +61,19 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   ```
 * '`load`' takes an optional second argument which turns on tracing for top-level evaluation.
 
+* Rheme implements the Common Lisp `sort` function.
+  ```
+  (sort '(8 6 7 5 3 0 9) >)  =>  (9 8 7 6 5 3 0)
+  ```
+
 * Rheme implements the Common Lisp bitwise logical operators `logand`, `logior`, `logxor`, and `lognot`.
   ```
   (logand -4 15)  =>  12
   ```
+
+* '`random`' returns a random number using Ruby's `Kernel#rand`.
+
+* '`quit`' quits Rheme and '`exit`' exits Ruby with an optional status code.
 
 ### Running Rheme
 
