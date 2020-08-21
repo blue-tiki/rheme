@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.2'
+$rheme_version = '0.2.3'
 
 require 'mathn'
 require 'readline'
@@ -256,7 +256,7 @@ $predefined_symbols = {
   :reverse     => lambda {|x|    x.reverse},
   :round       => lambda {|x|    x.round},
   :sin         => lambda {|x|    Math.sin(x)},
-  :sort        => lambda {|p,x|  x.sort {|*a| apply(p, a) ? -1 : 1}},
+  :sort        => lambda {|x,p|  x.sort {|*a| apply(p, a) ? -1 : 1}},
   :sqrt        => lambda {|x|    Math.sqrt(x)},
   :string      => lambda {|*x|   x.join},
   :string?     => lambda {|x|    x.instance_of?(String)},
@@ -526,14 +526,14 @@ $predefined_symbols = {
     :lambda         => method(:rheme_lambda),
     :let            => method(:rheme_let),
     :letrec         => method(:rheme_letrec),
+    :"let*"         => method(:rheme_letstar),
+    :"named-lambda" => method(:rheme_lambda),
     :or             => method(:rheme_or),
     :quasiquote     => lambda {|x, env| rheme_quasiquote(x[1], env)},
     :quote          => lambda {|x, env| x[1]},
     :set!           => lambda {|x, env| env.set_var(x[1], reval(x[2], env))},
     :source         => method(:rheme_source),
     :time           => lambda {|x, env| t = Time.now; reval(x[1], env); Time.now - t},
-    :"let*"         => method(:rheme_letstar),
-    :"named-lambda" => method(:rheme_lambda),
   }
 
   #
@@ -659,6 +659,7 @@ $predefined_symbols = {
       val = reval(expr, $toplevel_env)
       puts(unread_expr(val)) if verbose
     end
+  rescue SystemExit
   end
 
   $stdin_port = InputPort.new($stdin)
