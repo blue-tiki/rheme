@@ -1,6 +1,6 @@
 ## Rheme: A toy Lisp mostly compatible with R4RS Scheme
 
-Rheme is a full feautured toy Lisp preserving much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme is highly compatible with R4RS Scheme and has some useful extensions as well.
+Rheme is a full feautured toy Lisp preserving much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme is highly compatible with R4RS Scheme (exceptions are noted below) and has some useful extensions as well.
 
 ### Differences between Rheme and R4RS Scheme
 
@@ -18,13 +18,19 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
 
 ### Extensions to R4RS
 
-* Rheme implements unhygienic macros with `define-macro`.
+* Rheme implements unhygienic macros with `define-macro`:
   ```
   (define-macro (prog1 first . rest)
     (let ((val (gensym)))
       `(let ((,val ,first)) ,@rest ,val)))
   ```
-* Lambda expressions accept `#!optional and #!rest` arguments as in MIT Scheme.
+* '`source`' returns the lambda expression defining a macro or function:
+  ```
+  (source prog1)  =>  (named-lambda (prog1 first . rest)
+                        (let ((val (gensym)))
+			  `(let ((,val ,first)) ,@rest ,val)))
+  ```
+* Lambda expressions accept `#!optional and #!rest` arguments as in MIT Scheme:
   ```
   (define (fun #!optional a #!rest b)
     (list a b))
@@ -32,11 +38,11 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   (fun 1 2 3)  =>  (1 (2 3))
   (fun)        =>  (#f ())
   ```
-* Rheme has a `format` fuction similar to the one in MIT Scheme which accepts `~A`, `~S`, and `~%` as well as the Ruby format specifiers.
+* Rheme has a `format` fuction similar to the one in MIT Scheme which accepts `~A`, `~S`, and `~%` as well as the Ruby format specifiers:
   ```
   (format #f "~S:  $%.2f~%" 'hat 5)  =>  "hat:  $5.00\n"
   ```
-* Rheme implements `trace` and `untrace` which turn on and off messages printed when a procedure is entered and exited.
+* Rheme implements `trace` and `untrace` which turn on and off messages printed when a procedure is entered and exited:
   ```
   (trace / +)
 
@@ -47,7 +53,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
    2
   8
   ```
-* `trace-eval` and `untrace-eval` turn on and off tracing for the evaluator.
+* `trace-eval` and `untrace-eval` turn on and off tracing for the evaluator:
   ```
   (untrace +)
   (trace-eval)
@@ -61,19 +67,21 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   ```
 * '`load`' takes an optional second argument which turns on tracing for top-level evaluation.
 
-* Rheme implements the Common Lisp `sort` function.
+* Rheme implements the Common Lisp `sort` function:
   ```
   (sort '(8 6 7 5 3 0 9) >)  =>  (9 8 7 6 5 3 0)
   ```
-
-* Rheme implements the Common Lisp bitwise logical operators `logand`, `logior`, `logxor`, and `lognot`.
+* Rheme implements the Common Lisp bitwise logical operators `logand`, `logior`, `logxor`, and `lognot`:
   ```
   (logand -4 15)  =>  12
   ```
-
 * '`random`' returns a random number using Ruby's `Kernel#rand`.
 
-* '`quit`' quits Rheme and '`exit`' exits Ruby with an optional status code.
+* '`time`' returns the system time in seconds.
+
+* '`quit`' quits Rheme.
+
+* '`exit`' exits Ruby with an optional status code.
 
 ### Running Rheme
 
