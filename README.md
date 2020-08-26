@@ -28,7 +28,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   ```
   (source prog1)  =>  (named-lambda (prog1 first . rest)
                         (let ((val (gensym)))
-			  `(let ((,val ,first)) ,@rest ,val)))
+                          `(let ((,val ,first)) ,@rest ,val)))
   ```
 * Lambda expressions accept `#!optional and #!rest` arguments as in MIT Scheme:
   ```
