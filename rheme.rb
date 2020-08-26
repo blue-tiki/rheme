@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.3'
+$rheme_version = '0.2.4'
 
 require 'mathn'
 require 'readline'
@@ -263,6 +263,7 @@ $predefined_symbols = {
   :substring   => lambda {|x,a,b| x[a...b]},
   :symbol?     => lambda {|x|    x.is_a?(Symbol)},
   :tan         => lambda {|x|    Math.tan(x)},
+  :time        => lambda {||     Time.now.to_f},
   :truncate    => lambda {|x|    x.truncate},
   :vector      => lambda {|*x|   RVector.new(x)},
   :vector?     => lambda {|x|    x.is_a?(RVector)},
@@ -533,7 +534,6 @@ $predefined_symbols = {
     :quote          => lambda {|x, env| x[1]},
     :set!           => lambda {|x, env| env.set_var(x[1], reval(x[2], env))},
     :source         => method(:rheme_source),
-    :time           => lambda {|x, env| t = Time.now; reval(x[1], env); Time.now - t},
   }
 
   #
