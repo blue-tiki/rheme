@@ -1,6 +1,6 @@
 ## Rheme: A toy Lisp mostly compatible with R4RS Scheme
 
-Rheme is a full feautured toy Lisp preserving much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme is highly compatible with R4RS Scheme (exceptions are noted below) and has some useful extensions as well.
+Rheme is a full feautured toy Lisp preserving much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme includes all the essential features of R4RS Scheme and has some useful extensions as well. Incompatibilities with R4RS are noted below.
 
 ### Differences between Rheme and R4RS Scheme
 
