@@ -24,7 +24,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
     (let ((val (gensym)))
       `(let ((,val ,first)) ,@rest ,val)))
   ```
-* '`source`' returns the lambda expression defining a macro or function:
+* `source` returns the lambda expression defining a macro or function:
   ```
   (source prog1)  =>  (named-lambda (prog1 first . rest)
                         (let ((val (gensym)))
@@ -65,7 +65,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
    7
   3
   ```
-* '`load`' takes an optional second argument which turns on tracing for top-level evaluation.
+* `load` takes an optional second argument which turns on tracing for top-level evaluation.
 
 * Rheme implements the Common Lisp `sort` function:
   ```
@@ -75,13 +75,13 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   ```
   (logand -4 15)  =>  12
   ```
-* '`random`' returns a random number using Ruby's `Kernel#rand`.
+* `random` returns a random number using Ruby's `Kernel#rand`.
 
-* '`time`' returns the system time in seconds.
+* `time` returns the system time in seconds.
 
-* '`quit`' quits Rheme.
+* `quit` quits Rheme.
 
-* '`exit`' exits Ruby with an optional status code.
+* `exit` exits Ruby with an optional status code.
 
 ### Running Rheme
 
