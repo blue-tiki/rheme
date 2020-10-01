@@ -22,9 +22,9 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.4'
+$rheme_version = '0.2.5'
 
-require 'mathn'
+require 'cmath'
 require 'readline'
 require 'stringio'
 require 'strscan'
@@ -131,6 +131,10 @@ module Rheme
     tail_call?(val) ? reval(val[1], val[2]) : val
   end
 
+  def simplify(x)
+    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
+  end
+
   def rheme_append(x)
     return [] if x.empty?
     head = x[0..-2].inject(x[0].take(0), :concat)
@@ -153,8 +157,7 @@ module Rheme
   end
 
   def rheme_eqv(a, b)
-    a.equal?(b) || (a == [] && b == [] && a.class == b.class) or
-      a.is_a?(Numeric) && a == b && rheme_exact?(a) == rheme_exact?(b)
+    rheme_eq(a, b) || (a.is_a?(Numeric) && a == b && rheme_exact?(a) == rheme_exact?(b))
   end
 
   def rheme_exact?(n)
@@ -171,23 +174,23 @@ module Rheme
 $predefined_symbols = {
   :+           => lambda {|*x|   x.inject(0, :+)},
   :*           => lambda {|*x|   x.inject(1, :*)},
-  :-           => lambda {|*x|   x.size == 1 ?  -x[0] : x.drop(1).inject(x[0], :-)},
-  :"/"         => lambda {|*x|   x.size == 1 ? 1/x[0] : x.drop(1).inject(x[0], :/)},
+  :-           => lambda {|x,*y| y.empty? ? -x : y.inject(x, :-)},
+  :"/"         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
   :"="         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
   :"<"         => lambda {|*x|   x.each_cons(2).all? {|a, b| a <  b}},
   :">"         => lambda {|*x|   x.each_cons(2).all? {|a, b| a >  b}},
   :"<="        => lambda {|*x|   x.each_cons(2).all? {|a, b| a <= b}},
   :">="        => lambda {|*x|   x.each_cons(2).all? {|a, b| a >= b}},
   :abs         => lambda {|x|    x.abs},
-  :acos        => lambda {|x|    Math.acos(x)},
+  :acos        => lambda {|x|    CMath.acos(x)},
   :angle       => lambda {|x|    x.angle},
   :append      => lambda {|*x|   rheme_append(x)},
   :apply       => lambda {|x,*y| x.call(*y[0..-2].concat(y[-1]))},
-  :asin        => lambda {|x|    Math.asin(x)},
+  :asin        => lambda {|x|    CMath.asin(x)},
   :assoc       => lambda {|x,y|  y.assoc(x) || false},
   :assq        => lambda {|x,y|  y.find {|k| rheme_eq(k[0], x)}  || false},
   :assv        => lambda {|x,y|  y.find {|k| rheme_eqv(k[0], x)} || false},
-  :atan        => lambda {|*x|   x[1] ? Math.atan2(*x) : Math.atan(*x)},
+  :atan        => lambda {|*x|   x[1] ? CMath.atan2(*x) : CMath.atan(*x)},
   :boolean?    => lambda {|x|    x.equal?(true) || x.equal?(false)},
   :car         => lambda {|x|    x.fetch(0)},
   :caar        => lambda {|x|    x.fetch(0).fetch(0)},
@@ -199,7 +202,7 @@ $predefined_symbols = {
   :char?       => lambda {|x|    x.is_a?(RChar)},
   :complex?    => lambda {|x|    x.is_a?(Numeric)},
   :cons        => lambda {|x,y|  y.instance_of?(Array) ? [x, *y] : [x, :".", y]},
-  :cos         => lambda {|x|    Math.cos(x)},
+  :cos         => lambda {|x|    CMath.cos(x)},
   :denominator => lambda {|x|    x.denominator},
   :display     => lambda {|x,y=$stdout| !y.write(x.is_a?(String) ? x : unread_expr(x))},
   :eq?         => lambda {|x,y|  rheme_eq(x, y)},
@@ -209,7 +212,7 @@ $predefined_symbols = {
   :even?       => lambda {|x|    x.even?},
   :exact?      => lambda {|x|    rheme_exact?(x)},
   :exit        => lambda {|x=1|  exit!(x)},
-  :exp         => lambda {|x|    Math.exp(x)},
+  :exp         => lambda {|x|    CMath.exp(x)},
   :expt        => lambda {|x,y|  x ** y},
   :floor       => lambda {|x|    x.floor},
   :force       => lambda {|x|    x.is_a?(Promise) ? x.call : x},
@@ -223,7 +226,7 @@ $predefined_symbols = {
   :list        => lambda {|*x|   x},
   :list?       => lambda {|x|    x.instance_of?(Array) && ! x[-2].equal?(:".")},
   :load        => lambda {|x,v=false| File.open(x, 'r') {|f| reval_stream(f, v)}},
-  :log         => lambda {|x|    Math.log(x)},
+  :log         => lambda {|x|    CMath.log(x)},
   :logand      => lambda {|*x|   x.inject(-1, :&)},
   :logior      => lambda {|*x|   x.inject(0, :|)},
   :lognot      => lambda {|x|    ~x},
@@ -247,7 +250,7 @@ $predefined_symbols = {
   :positive?   => lambda {|x|    x > 0},
   :procedure?  => lambda {|x|    x.is_a?(Proc)},
   :quit        => lambda {||     raise SystemExit},
-  :quotient    => lambda {|x,y|  (x / y).truncate},
+  :quotient    => lambda {|x,y|  x.quo(y).truncate},
   :random      => lambda {|*x|   rand(*x)},
   :rational?   => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :read        => lambda {|x=$stdin_port| rheme_read(x)},
@@ -255,14 +258,14 @@ $predefined_symbols = {
   :remainder   => lambda {|x,y|  x.remainder(y)},
   :reverse     => lambda {|x|    x.reverse},
   :round       => lambda {|x|    x.round},
-  :sin         => lambda {|x|    Math.sin(x)},
+  :sin         => lambda {|x|    CMath.sin(x)},
   :sort        => lambda {|x,p|  x.sort {|*a| apply(p, a) ? -1 : 1}},
-  :sqrt        => lambda {|x|    Math.sqrt(x)},
+  :sqrt        => lambda {|x|    CMath.sqrt(x)},
   :string      => lambda {|*x|   x.join},
   :string?     => lambda {|x|    x.instance_of?(String)},
   :substring   => lambda {|x,a,b| x[a...b]},
   :symbol?     => lambda {|x|    x.is_a?(Symbol)},
-  :tan         => lambda {|x|    Math.tan(x)},
+  :tan         => lambda {|x|    CMath.tan(x)},
   :time        => lambda {||     Time.now.to_f},
   :truncate    => lambda {|x|    x.truncate},
   :vector      => lambda {|*x|   RVector.new(x)},
@@ -296,7 +299,7 @@ $predefined_symbols = {
   :"exact->inexact"   => lambda {|x|       x.to_f},
   :"for-each"         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
   :"imag-part"        => lambda {|x|       x.imaginary},
-  :"inexact->exact"   => lambda {|x|       x.rationalize},
+  :"inexact->exact"   => lambda {|x|       simplify(x.rationalize)},
   :"input-port?"      => lambda {|x|       x.is_a?(InputPort)},
   :"integer->char"    => lambda {|x|       RChar.new(x.chr)},
   :"list-ref"         => lambda {|x,i|     x.fetch(i)},
@@ -704,7 +707,7 @@ $predefined_symbols = {
   def rheme_define_macro(x, outer)
     name, source = parse_define_args(x)
     prev = $special_forms[assert_var(name)]
-    if prev and not (prev.is_a?(Macro) && prev.source == source)
+    if prev && ! (prev.is_a?(Macro) && prev.source == source)
       warn "Warning: Redefinition of keyword or macro: #{name}"
     end
 
