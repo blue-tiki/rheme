@@ -561,7 +561,7 @@ $predefined_symbols = {
     when ',@'           then [:'unquote-splicing', read_expr(input)]
     when /^(\.+|\+|-)$/ then token.to_sym
     when /^[\d.+-]/
-      string_to_num(token).tap {|n| fail RhemeError, "#{token} is not a number" unless n}
+      string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
     when /^"/
       fail RhemeError, "#{token} is not a string" unless token[-1] == '"'
       token[1..-2].gsub(/\\./).each {|x| x[1].tr('n', "\n")}
@@ -579,8 +579,8 @@ $predefined_symbols = {
   end
 
   def string_to_num(tok)
-    return false if tok[-1] == '.' # Rational() no longer fails this case
-    Integer(tok) rescue Float(tok) rescue Rational(tok) rescue Complex(tok) rescue false
+    fail if tok[-1] == '.'  # Some versions of Rational() accept this case
+    Integer(tok) rescue Float(tok) rescue Rational(tok) rescue Complex(tok)
   end
 
   #
