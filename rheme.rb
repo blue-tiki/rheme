@@ -42,7 +42,7 @@ module Rheme
   end
 
   def tail_call?(x)
-    x.instance_of?(Array) && x.first.equal?(:"tail-call()")
+    x.instance_of?(Array) && x.first.equal?(:'tail-call()')
   end
 
   #
@@ -81,7 +81,7 @@ module Rheme
 
     def to_s
       s = self.class.to_s.sub('Rheme::', '')
-      source[0].equal?(:"named-lambda") ? "#<#{s}: #{source[1][0]}>" : "#<#{s}>"
+      source[0].equal?(:'named-lambda') ? "#<#{s}: #{source[1][0]}>" : "#<#{s}>"
     end
   end
 
@@ -131,17 +131,13 @@ module Rheme
     tail_call?(val) ? reval(val[1], val[2]) : val
   end
 
-  def simplify(x)
-    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
-  end
-
   def rheme_append(x)
     return [] if x.empty?
     head = x[0..-2].inject(x[0].take(0), :concat)
     tail = x.last
     return tail if head.empty?
     return head.concat(tail) if tail.instance_of?(Array)
-    head << :"." if head.instance_of?(Array)
+    head << :'.' if head.instance_of?(Array)
     head << tail
   end
 
@@ -171,16 +167,20 @@ module Rheme
     raise RhemeError, 'Unexpected EOF'
   end
 
+  def simplify(x)
+    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
+  end
+
 $predefined_symbols = {
   :+           => lambda {|*x|   x.inject(0, :+)},
   :*           => lambda {|*x|   x.inject(1, :*)},
   :-           => lambda {|x,*y| y.empty? ? -x : y.inject(x, :-)},
-  :"/"         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
-  :"="         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
-  :"<"         => lambda {|*x|   x.each_cons(2).all? {|a, b| a <  b}},
-  :">"         => lambda {|*x|   x.each_cons(2).all? {|a, b| a >  b}},
-  :"<="        => lambda {|*x|   x.each_cons(2).all? {|a, b| a <= b}},
-  :">="        => lambda {|*x|   x.each_cons(2).all? {|a, b| a >= b}},
+  :'/'         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
+  :'='         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
+  :'<'         => lambda {|*x|   x.each_cons(2).all? {|a, b| a <  b}},
+  :'>'         => lambda {|*x|   x.each_cons(2).all? {|a, b| a >  b}},
+  :'<='        => lambda {|*x|   x.each_cons(2).all? {|a, b| a <= b}},
+  :'>='        => lambda {|*x|   x.each_cons(2).all? {|a, b| a >= b}},
   :abs         => lambda {|x|    x.abs},
   :acos        => lambda {|x|    CMath.acos(x)},
   :angle       => lambda {|x|    x.angle},
@@ -195,9 +195,9 @@ $predefined_symbols = {
   :car         => lambda {|x|    x.fetch(0)},
   :caar        => lambda {|x|    x.fetch(0).fetch(0)},
   :caaar       => lambda {|x|    x.fetch(0).fetch(0).fetch(0)},
-  :cadr        => lambda {|x|    x[1].equal?(:".") ? x[2].fetch(0) : x.fetch(1)},
-  :caddr       => lambda {|x|    x[2].equal?(:".") ? x[3].fetch(0) : x.fetch(2)},
-  :cdr         => lambda {|x|    x[1].equal?(:".") ? x.fetch(2)    : x.drop(1)},
+  :cadr        => lambda {|x|    x[1].equal?(:'.') ? x[2].fetch(0) : x.fetch(1)},
+  :caddr       => lambda {|x|    x[2].equal?(:'.') ? x[3].fetch(0) : x.fetch(2)},
+  :cdr         => lambda {|x|    x[1].equal?(:'.') ? x.fetch(2)    : x.drop(1)},
   :ceiling     => lambda {|x|    x.ceil},
   :char?       => lambda {|x|    x.is_a?(RChar)},
   :complex?    => lambda {|x|    x.is_a?(Numeric)},
@@ -224,7 +224,7 @@ $predefined_symbols = {
   :lcm         => lambda {|*x|   x.inject(1, :lcm)},
   :length      => lambda {|x|    x.length},
   :list        => lambda {|*x|   x},
-  :list?       => lambda {|x|    x.instance_of?(Array) && ! x[-2].equal?(:".")},
+  :list?       => lambda {|x|    x.instance_of?(Array) && ! x[-2].equal?(:'.')},
   :load        => lambda {|x,v=false| File.open(x, 'r') {|f| reval_stream(f, v)}},
   :log         => lambda {|x|    CMath.log(x)},
   :logand      => lambda {|*x|   x.inject(-1, :&)},
@@ -272,81 +272,81 @@ $predefined_symbols = {
   :vector?     => lambda {|x|    x.is_a?(RVector)},
   :write       => lambda {|x,y=$stdout| y.write(unread_expr(x)); false},
   :zero?       => lambda {|x|    x == 0},
-  :"call/cc"          => lambda {|x|       rheme_callcc(x)},
-  :"char-alphabetic?" => lambda {|x|       x =~ /[A-Za-z]/ && true || false},
-  :"char-ci=?"        => lambda {|x,y|     x.casecmp(y) == 0},
-  :"char-ci<?"        => lambda {|x,y|     x.casecmp(y) <  0},
-  :"char-ci>?"        => lambda {|x,y|     x.casecmp(y) >  0},
-  :"char-ci<=?"       => lambda {|x,y|     x.casecmp(y) <= 0},
-  :"char-ci>=?"       => lambda {|x,y|     x.casecmp(y) >= 0},
-  :"char-downcase"    => lambda {|x|       x.downcase},
-  :"char-lower-case?" => lambda {|x|       x =~ /[a-z]/ && true || false},
-  :"char-numeric?"    => lambda {|x|       x =~ /\d/    && true || false},
-  :"char-upcase"      => lambda {|x|       x.upcase},
-  :"char-upper-case?" => lambda {|x|       x =~ /[A-Z]/ && true || false},
-  :"char-whitespace?" => lambda {|x|       x =~ /\s/    && true || false},
-  :"char->integer"    => lambda {|x|       x.ord},
-  :"char=?"           => lambda {|x,y|     x == y},
-  :"char<?"           => lambda {|x,y|     x < y},
-  :"char>?"           => lambda {|x,y|     x > y},
-  :"char<=?"          => lambda {|x,y|     x <= y},
-  :"char>=?"          => lambda {|x,y|     x >= y},
-  :"close-input-port" => lambda {|x|       !x.io.close rescue false},
-  :"close-output-port" => lambda {|x|      !x.close    rescue false},
-  :"current-input-port" => lambda {||      $stdin_port},
-  :"current-output-port" => lambda {||     $stdout},
-  :"eof-object?"      => lambda {|x|       x == :EOF},
-  :"exact->inexact"   => lambda {|x|       x.to_f},
-  :"for-each"         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
-  :"imag-part"        => lambda {|x|       x.imaginary},
-  :"inexact->exact"   => lambda {|x|       simplify(x.rationalize)},
-  :"input-port?"      => lambda {|x|       x.is_a?(InputPort)},
-  :"integer->char"    => lambda {|x|       RChar.new(x.chr)},
-  :"list-ref"         => lambda {|x,i|     x.fetch(i)},
-  :"list->string"     => lambda {|x|       x.join},
-  :"list->vector"     => lambda {|x|       RVector.new(x)},
-  :"make-polar"       => lambda {|r,t|     Complex.polar(r, t)},
-  :"make-rectangular" => lambda {|r,i|     Complex.rectangular(r, i)},
-  :"make-string"      => lambda {|n,x=' '| x.chr.to_s * n},
-  :"make-vector"      => lambda {|n,x=0|   RVector.new(n, x)},
-  :"number->string"   => lambda {|x,r=[]|  x.to_s(*r)},
-  :"open-input-file"  => lambda {|x|       InputPort.new(File.new(x, 'r'))},
-  :"open-output-file" => lambda {|x|       File.new(x, 'w')},
-  :"output-port?"     => lambda {|x|       x.is_a?(IO) && x.stat.writable?},
-  :"peek-char"        => lambda {|x=$stdin_port| x.getch(true)},
-  :"read-char"        => lambda {|x=$stdin_port| x.getch(false)},
-  :"real-part"        => lambda {|x|       x.real},
-  :"rheme-version"    => lambda {||        $rheme_version},
-  :"set-car!"         => lambda {|x,y|     x[0] = y},
-  :"set-cdr!"         => lambda {|x,y|     x.replace(rheme_append([x.take(1), y]))},
-  :"string-append"    => lambda {|*x|      x.inject('', :concat)},
-  :"string-ci=?"      => lambda {|x,y|     x.casecmp(y) == 0},
-  :"string-ci<?"      => lambda {|x,y|     x.casecmp(y) <  0},
-  :"string-ci>?"      => lambda {|x,y|     x.casecmp(y) >  0},
-  :"string-ci<=?"     => lambda {|x,y|     x.casecmp(y) <= 0},
-  :"string-ci>=?"     => lambda {|x,y|     x.casecmp(y) >= 0},
-  :"string-copy"      => lambda {|x|       String.new(x)},
-  :"string-fill!"     => lambda {|x,y|     x.gsub!(/./, y[0])},
-  :"string-length"    => lambda {|x|       x.length},
-  :"string-ref"       => lambda {|x,i|     x[i]},
-  :"string-set!"      => lambda {|v,i,x|   v[i] = x},
-  :"string->list"     => lambda {|x|       x.chars.map {|c| RChar.new(c)}},
-  :"string->number"   => lambda {|x,r=nil| r ? x.to_i(r) : string_to_num(x) rescue false},
-  :"string->symbol"   => lambda {|x|       x.to_sym},
-  :"string=?"         => lambda {|x,y|     x == y},
-  :"string<?"         => lambda {|x,y|     x < y},
-  :"string>?"         => lambda {|x,y|     x > y},
-  :"string<=?"        => lambda {|x,y|     x <= y},
-  :"string>=?"        => lambda {|x,y|     x >= y},
-  :"symbol->string"   => lambda {|x|       x.to_s},
-  :"trace-eval"       => lambda {||        $trace_eval = true},
-  :"untrace-eval"     => lambda {||        $trace_eval = false},
-  :"vector-fill!"     => lambda {|x,y|     x.fill(y)},
-  :"vector-length"    => lambda {|v|       v.length},
-  :"vector-ref"       => lambda {|v,i|     v.fetch(i)},
-  :"vector-set!"      => lambda {|v,i,x|   v.fetch(i); v[i] = x},
-  :"vector->list"     => lambda {|x|       Array.new(x)},
-  :"write-char"       => lambda {|x,y=$stdout| y.write(x); false}
+  :'call/cc'          => lambda {|x|       rheme_callcc(x)},
+  :'char-alphabetic?' => lambda {|x|       x =~ /[A-Za-z]/ && true || false},
+  :'char-ci=?'        => lambda {|x,y|     x.casecmp(y) == 0},
+  :'char-ci<?'        => lambda {|x,y|     x.casecmp(y) <  0},
+  :'char-ci>?'        => lambda {|x,y|     x.casecmp(y) >  0},
+  :'char-ci<=?'       => lambda {|x,y|     x.casecmp(y) <= 0},
+  :'char-ci>=?'       => lambda {|x,y|     x.casecmp(y) >= 0},
+  :'char-downcase'    => lambda {|x|       x.downcase},
+  :'char-lower-case?' => lambda {|x|       x =~ /[a-z]/ && true || false},
+  :'char-numeric?'    => lambda {|x|       x =~ /\d/    && true || false},
+  :'char-upcase'      => lambda {|x|       x.upcase},
+  :'char-upper-case?' => lambda {|x|       x =~ /[A-Z]/ && true || false},
+  :'char-whitespace?' => lambda {|x|       x =~ /\s/    && true || false},
+  :'char->integer'    => lambda {|x|       x.ord},
+  :'char=?'           => lambda {|x,y|     x == y},
+  :'char<?'           => lambda {|x,y|     x < y},
+  :'char>?'           => lambda {|x,y|     x > y},
+  :'char<=?'          => lambda {|x,y|     x <= y},
+  :'char>=?'          => lambda {|x,y|     x >= y},
+  :'close-input-port' => lambda {|x|       !x.io.close rescue false},
+  :'close-output-port' => lambda {|x|      !x.close    rescue false},
+  :'current-input-port' => lambda {||      $stdin_port},
+  :'current-output-port' => lambda {||     $stdout},
+  :'eof-object?'      => lambda {|x|       x == :EOF},
+  :'exact->inexact'   => lambda {|x|       x.to_f},
+  :'for-each'         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
+  :'imag-part'        => lambda {|x|       x.imaginary},
+  :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
+  :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
+  :'integer->char'    => lambda {|x|       RChar.new(x.chr)},
+  :'list-ref'         => lambda {|x,i|     x.fetch(i)},
+  :'list->string'     => lambda {|x|       x.join},
+  :'list->vector'     => lambda {|x|       RVector.new(x)},
+  :'make-polar'       => lambda {|r,t|     Complex.polar(r, t)},
+  :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
+  :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
+  :'make-vector'      => lambda {|n,x=0|   RVector.new(n, x)},
+  :'number->string'   => lambda {|x,r=[]|  x.to_s(*r)},
+  :'open-input-file'  => lambda {|x|       InputPort.new(File.new(x, 'r'))},
+  :'open-output-file' => lambda {|x|       File.new(x, 'w')},
+  :'output-port?'     => lambda {|x|       x.is_a?(IO) && x.stat.writable?},
+  :'peek-char'        => lambda {|x=$stdin_port| x.getch(true)},
+  :'read-char'        => lambda {|x=$stdin_port| x.getch(false)},
+  :'real-part'        => lambda {|x|       x.real},
+  :'rheme-version'    => lambda {||        $rheme_version},
+  :'set-car!'         => lambda {|x,y|     x[0] = y},
+  :'set-cdr!'         => lambda {|x,y|     x.replace(rheme_append([x.take(1), y]))},
+  :'string-append'    => lambda {|*x|      x.inject('', :concat)},
+  :'string-ci=?'      => lambda {|x,y|     x.casecmp(y) == 0},
+  :'string-ci<?'      => lambda {|x,y|     x.casecmp(y) <  0},
+  :'string-ci>?'      => lambda {|x,y|     x.casecmp(y) >  0},
+  :'string-ci<=?'     => lambda {|x,y|     x.casecmp(y) <= 0},
+  :'string-ci>=?'     => lambda {|x,y|     x.casecmp(y) >= 0},
+  :'string-copy'      => lambda {|x|       String.new(x)},
+  :'string-fill!'     => lambda {|x,y|     x.gsub!(/./, y[0])},
+  :'string-length'    => lambda {|x|       x.length},
+  :'string-ref'       => lambda {|x,i|     x[i]},
+  :'string-set!'      => lambda {|v,i,x|   v[i] = x},
+  :'string->list'     => lambda {|x|       x.chars.map {|c| RChar.new(c)}},
+  :'string->number'   => lambda {|x,r=nil| r ? x.to_i(r) : string_to_num(x) rescue false},
+  :'string->symbol'   => lambda {|x|       x.to_sym},
+  :'string=?'         => lambda {|x,y|     x == y},
+  :'string<?'         => lambda {|x,y|     x < y},
+  :'string>?'         => lambda {|x,y|     x > y},
+  :'string<=?'        => lambda {|x,y|     x <= y},
+  :'string>=?'        => lambda {|x,y|     x >= y},
+  :'symbol->string'   => lambda {|x|       x.to_s},
+  :'trace-eval'       => lambda {||        $trace_eval = true},
+  :'untrace-eval'     => lambda {||        $trace_eval = false},
+  :'vector-fill!'     => lambda {|x,y|     x.fill(y)},
+  :'vector-length'    => lambda {|v|       v.length},
+  :'vector-ref'       => lambda {|v,i|     v.fetch(i)},
+  :'vector-set!'      => lambda {|v,i,x|   v.fetch(i); v[i] = x},
+  :'vector->list'     => lambda {|x|       Array.new(x)},
+  :'write-char'       => lambda {|x,y=$stdout| y.write(x); false}
   }
 
   $toplevel_env = Env.new.update($predefined_symbols)
@@ -357,12 +357,12 @@ $predefined_symbols = {
 
   def rheme_and(x, env)
     return false unless x[1..-2].all? {|expr| reval(expr, env)}
-    x.length == 1 || [:"tail-call()", x.last, env]
+    x.length == 1 || [:'tail-call()', x.last, env]
   end
 
   def rheme_begin(x, env, skip = 1)
     x[skip..-2].each {|expr| reval(expr, env)}
-    x.length > skip && [:"tail-call()", x.last, env]
+    x.length > skip && [:'tail-call()', x.last, env]
   end
 
   def rheme_case(x, env)
@@ -391,7 +391,7 @@ $predefined_symbols = {
   def parse_define_args(x)
     # (define (fun arg1 arg2 ...) ...)
     # (define var val)
-    return x[1][0], [:"named-lambda", *x.drop(1)] if x[1].instance_of?(Array)
+    return x[1][0], [:'named-lambda', *x.drop(1)] if x[1].instance_of?(Array)
     return x[1], x[2] if x.length == 3
     fail RhemeError, x.length > 3 ? 'Too many arguments' : 'Too few arguments'
   end
@@ -420,8 +420,8 @@ $predefined_symbols = {
 
   def rheme_if(x, env)
     fail RhemeError, 'Too many arguments' if x.length > 4
-    return [:"tail-call()", x[2], env] if reval(x[1], env)
-    x.length > 3 && [:"tail-call()", x[3], env]
+    return [:'tail-call()', x[2], env] if reval(x[1], env)
+    x.length > 3 && [:'tail-call()', x[3], env]
   end
 
   def rheme_lambda(source, outer)
@@ -443,10 +443,10 @@ $predefined_symbols = {
     # (named-lambda (name arg1 arg2 ...) ...)
     # (lambda arglist ...)
     if x[1].instance_of?(Array)
-      vars = x[0].equal?(:"named-lambda") ? x[1].drop(1) : x[1].dup
-      rest_argp = vars[-2].equal?(:"#!rest") || vars[-2].equal?(:".")
+      vars = x[0].equal?(:'named-lambda') ? x[1].drop(1) : x[1].dup
+      rest_argp = vars[-2].equal?(:'#!rest') || vars[-2].equal?(:'.')
       vars.delete_at(-2) if rest_argp
-      min_args = vars.find_index(:"#!optional")
+      min_args = vars.find_index(:'#!optional')
       vars.delete_at(min_args) if min_args
       min_args ||= vars.length - (rest_argp ? 1 : 0)
       return vars, min_args, rest_argp
@@ -464,8 +464,8 @@ $predefined_symbols = {
     else
       env = Env.new(outer, x[2])
       form = [x[1], *x[2].map(&:first)]
-      env.let_var(x[1], rheme_lambda([:"named-lambda", form, *x.drop(3)], env))
-      [:"tail-call()", form, env]
+      env.let_var(x[1], rheme_lambda([:'named-lambda', form, *x.drop(3)], env))
+      [:'tail-call()', form, env]
     end
   end
 
@@ -486,7 +486,7 @@ $predefined_symbols = {
 
   def rheme_or(x, env)
     x[1..-2].each {|expr| val = reval(expr, env); return val if val}
-    x.length > 1 && [:"tail-call()", x.last, env]
+    x.length > 1 && [:'tail-call()', x.last, env]
   end
 
   def rheme_quasiquote(x, env, depth = 1)
@@ -497,7 +497,7 @@ $predefined_symbols = {
       if depth == 0
         fail RhemeError, 'unquote requires exactly one argument' if index < x.length - 1
         val = rheme_append([val[0..-2], reval(expr, env)])
-      elsif depth == 1 && expr.instance_of?(Array) && expr[0] == :"unquote-splicing"
+      elsif depth == 1 && expr.instance_of?(Array) && expr[0] == :'unquote-splicing'
         splice = reval(expr[1], env)
         unless splice.instance_of?(Array) || (index == x.length - 1 && !val.empty?)
           fail RhemeError, "unquote-splicing: #{to_string(splice)} is not a list"
@@ -505,7 +505,7 @@ $predefined_symbols = {
         val = rheme_append([val, splice])
       else
         depth += 1 if expr == :quasiquote
-        depth -= 1 if expr == :unquote || expr == :"unquote-splicing"
+        depth -= 1 if expr == :unquote || expr == :'unquote-splicing'
         val << rheme_quasiquote(expr, env, depth)
       end
     end
@@ -530,8 +530,8 @@ $predefined_symbols = {
     :lambda         => method(:rheme_lambda),
     :let            => method(:rheme_let),
     :letrec         => method(:rheme_letrec),
-    :"let*"         => method(:rheme_letstar),
-    :"named-lambda" => method(:rheme_lambda),
+    :'let*'         => method(:rheme_letstar),
+    :'named-lambda' => method(:rheme_lambda),
     :or             => method(:rheme_or),
     :quasiquote     => lambda {|x, env| rheme_quasiquote(x[1], env)},
     :quote          => lambda {|x, env| x[1]},
@@ -551,7 +551,7 @@ $predefined_symbols = {
       list.push(read_expr(input)) until input.peek == ')'
       input.next
       if token == '('
-        list[-2..-1] = list[-1] while list[-2] == :"." && list[-1].instance_of?(Array)
+        list[-2..-1] = list[-1] while list[-2] == :'.' && list[-1].instance_of?(Array)
       end
       list
     when ')'         then fail RhemeError, 'Unexpected )'
@@ -593,12 +593,12 @@ $predefined_symbols = {
         when :quote              then return "'"  << unread_expr(exp[1], limits, depth)
         when :quasiquote         then return '`'  << unread_expr(exp[1], limits, depth)
         when :unquote            then return ','  << unread_expr(exp[1], limits, depth)
-        when :"unquote-splicing" then return ',@' << unread_expr(exp[1], limits, depth)
+        when :'unquote-splicing' then return ',@' << unread_expr(exp[1], limits, depth)
         end
       end
       if limits
         return '(...)' if depth >= limits[:depth]
-        exp = exp.first(limits[:length]) << :"..." if exp.length > limits[:length]
+        exp = exp.first(limits[:length]) << :'...' if exp.length > limits[:length]
       end
       '(' << exp.map {|x| unread_expr(x, limits, depth + 1)}.join(' ') << ')'
     when RChar  then '#\\' << (exp == ' ' ? 'space' : exp == "\n" ? 'newline' : exp)
@@ -715,12 +715,12 @@ $predefined_symbols = {
     $special_forms[name] = Macro.new(source) do |form, env|
       expansion = apply(expander, form.drop(1))
       expansion = [:begin, expansion] unless expansion.instance_of?(Array)
-      [:"tail-call()", form.replace(expansion), env]
+      [:'tail-call()', form.replace(expansion), env]
     end
     name
   end
 
-  $special_forms[:"define-macro"] = method(:rheme_define_macro)
+  $special_forms[:'define-macro'] = method(:rheme_define_macro)
 
   #
   # Format Extension
