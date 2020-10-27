@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.5'
+$rheme_version = '0.2.6'
 
 require 'cmath'
 require 'readline'
@@ -201,7 +201,7 @@ $predefined_symbols = {
   :ceiling     => lambda {|x|    x.ceil},
   :char?       => lambda {|x|    x.is_a?(RChar)},
   :complex?    => lambda {|x|    x.is_a?(Numeric)},
-  :cons        => lambda {|x,y|  y.instance_of?(Array) ? [x, *y] : [x, :".", y]},
+  :cons        => lambda {|x,y|  y.instance_of?(Array) ? [x].concat(y) : [x, :'.', y]},
   :cos         => lambda {|x|    CMath.cos(x)},
   :denominator => lambda {|x|    x.denominator},
   :display     => lambda {|x,y=$stdout| !y.write(x.is_a?(String) ? x : unread_expr(x))},
@@ -554,12 +554,14 @@ $predefined_symbols = {
         list[-2..-1] = list[-1] while list[-2] == :'.' && list[-1].instance_of?(Array)
       end
       list
-    when ')'         then fail RhemeError, 'Unexpected )'
-    when "'"         then [:quote,              read_expr(input)]
-    when "`"         then [:quasiquote,         read_expr(input)]
-    when ','         then [:unquote,            read_expr(input)]
-    when ',@'        then [:"unquote-splicing", read_expr(input)]
-    when /^-?\.?\d/  then string_to_num(token) || token.downcase.to_sym
+    when ')'            then fail RhemeError, 'Unexpected )'
+    when "'"            then [:quote,              read_expr(input)]
+    when "`"            then [:quasiquote,         read_expr(input)]
+    when ','            then [:unquote,            read_expr(input)]
+    when ',@'           then [:'unquote-splicing', read_expr(input)]
+    when /^(\.+|\+|-)$/ then token.to_sym
+    when /^[\d.+-]/
+      string_to_num(token).tap {|n| fail RhemeError, "#{token} is not a number" unless n}
     when /^"/
       fail RhemeError, "#{token} is not a string" unless token[-1] == '"'
       token[1..-2].gsub(/\\./).each {|x| x[1].tr('n', "\n")}
@@ -577,6 +579,7 @@ $predefined_symbols = {
   end
 
   def string_to_num(tok)
+    return false if tok[-1] == '.' # Rational() no longer fails this case
     Integer(tok) rescue Float(tok) rescue Rational(tok) rescue Complex(tok) rescue false
   end
 
