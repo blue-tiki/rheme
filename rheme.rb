@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
-# Rheme: The part of a clause that provides information about the theme or
-#        a toy Lisp mostly compatible with R4RS Scheme
+# Rheme: The part of a clause that provides information about the theme
+#        or a toy Lisp mostly compatible with R4RS Scheme
 #
 # Copyright 2020 Marc Ferguson
 #
@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.2.6'
+$rheme_version = '0.4'
 
 require 'cmath'
 require 'readline'
@@ -547,13 +547,14 @@ $predefined_symbols = {
     token = input.next
     case token
     when '(', '#('
-      list = (token == '(') ? [] : RVector.new
-      list.push(read_expr(input)) until input.peek == ')'
+      exp = (token == '(' ? Array : RVector).new
+      exp.push(read_expr(input)) until input.peek == ')'
       input.next
-      if token == '('
-        list[-2..-1] = list[-1] while list[-2] == :'.' && list[-1].instance_of?(Array)
-      end
-      list
+      return exp unless exp.include?(:'.')
+      fail RhemeError, "Unexpected '.'" unless exp.instance_of?(Array)
+      exp[-2..-1] = exp[-1] while exp[-2] == :'.' && exp[-1].instance_of?(Array)
+      return exp unless [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
+      fail RhemeError, "Unexpected '.'" 
     when ')'            then fail RhemeError, 'Unexpected )'
     when "'"            then [:quote,              read_expr(input)]
     when "`"            then [:quasiquote,         read_expr(input)]
@@ -678,9 +679,15 @@ $predefined_symbols = {
     puts "Rheme version #$rheme_version" if prompt == 'rheme> '
     repl_port = InputPort.new(:REPL)
     loop do
-      incomplete_expr = repl_port.scanner.rest.gsub(/^\s*(;.*)?|\n$/, '')
-      repl_port.prompt = prompt + incomplete_expr
-      val = toplevel_eval(read_expr(repl_port))
+      begin
+        incomplete_expr = repl_port.scanner.rest.gsub(/^\s*(;.*)?|\n$/, '')
+        repl_port.prompt = prompt + incomplete_expr
+        expr = read_expr(repl_port)
+      rescue RhemeError => err
+        puts "REPL: #{err}"
+        next repl_port.scanner.terminate
+      end
+      val = toplevel_eval(expr)
       repl_port.scanner.terminate if val.nil?
       puts to_string(val) unless val.nil?
     end
