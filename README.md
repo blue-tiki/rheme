@@ -12,7 +12,11 @@ Rheme differs from R4RS in two ways:
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-2. Numeric literals use Ruby syntax: `0.`, `0f0`, and `#b0` are not valid numbers.
+2. Numeric literals use Ruby syntax:
+
+   `0.`, `0f0`, and `#b0` are not valid numbers.
+
+   `.3`, `5/8`, and `1+0.5i` are valid.
 
 There are other relatively minor differences. For example, Rheme's `call/cc` fails the "yin yang puzzle" test but works in most cases.
 
