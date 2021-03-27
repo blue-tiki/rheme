@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = 0.5
+$rheme_version = "0.5_1"
 
 require 'cmath'
 require 'readline'
@@ -635,7 +635,7 @@ $predefined_symbols = {
       super() do |collect|
         while another_line?
           while (token = @scanner.scan(@@tokenizer))
-            collect << token unless token =~ /^\s+$|^;.*/
+            collect << token unless token =~ /\A\s+\z|\A;/
           end
         end
       end
@@ -644,7 +644,7 @@ $predefined_symbols = {
     def another_line?
       if @io == :REPL
         line = Readline.readline(@prompt, true)
-        @prompt = ''  # clear prompt until read_expr returns
+        @prompt = '' unless line == ''
         line && @scanner << line << "\n"
       else
         line = @io.gets
