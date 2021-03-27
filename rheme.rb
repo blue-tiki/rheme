@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.4'
+$rheme_version = 0.5
 
 require 'cmath'
 require 'readline'
@@ -173,7 +173,7 @@ module Rheme
 
 $predefined_symbols = {
   :+           => lambda {|*x|   x.inject(0, :+)},
-  :*           => lambda {|*x|   x.inject(1, :*)},
+  :*           => lambda {|*x|   simplify(x.inject(1, :*))},
   :-           => lambda {|x,*y| y.empty? ? -x : y.inject(x, :-)},
   :'/'         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
   :'='         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
@@ -213,7 +213,7 @@ $predefined_symbols = {
   :exact?      => lambda {|x|    rheme_exact?(x)},
   :exit        => lambda {|x=1|  exit!(x)},
   :exp         => lambda {|x|    CMath.exp(x)},
-  :expt        => lambda {|x,y|  x ** y},
+  :expt        => lambda {|x,y|  simplify(x ** y)},
   :floor       => lambda {|x|    x.floor},
   :force       => lambda {|x|    x.is_a?(Promise) ? x.call : x},
   :format      => lambda {|*x|   rheme_format(*x)},
@@ -367,20 +367,20 @@ $predefined_symbols = {
 
   def rheme_case(x, env)
     key = reval(x[1], env)
-    for clause in x.drop(2)
-      if clause[0].equal?(:else) || clause[0].include?(key)
-        return rheme_begin(clause, env)
-      end
-    end
-    false
-  end
+    clause = x.drop(2).find {|c| c[0].equal?(:else) || c[0].include?(key)}
+    return false unless clause
+    return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
+    [:'tail-call()', [clause[2], [:quote, key]], env]
+  end 
 
   def rheme_cond(x, env)
-    for clause in x.drop(1)
-      test = clause[0].equal?(:else) || reval(clause[0], env)
-      return (clause.length == 1) ? test : rheme_begin(clause, env) if test
-    end
-    false
+    test = false
+    clause = x.drop(1).find {|c| test = c[0].equal?(:else) || reval(c[0], env)}
+    return false unless clause
+    return rheme_begin(clause, env) if clause[0].equal?(:else)
+    return test if clause.length == 1
+    return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
+    [:'tail-call()', [clause[2], [:quote, test]], env]
   end
 
   def rheme_define(x, env)
