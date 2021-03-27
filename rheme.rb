@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = "0.5_1"
+$rheme_version = "0.5_2"
 
 require 'cmath'
 require 'readline'
@@ -279,10 +279,10 @@ $predefined_symbols = {
   :'char-ci>?'        => lambda {|x,y|     x.casecmp(y) >  0},
   :'char-ci<=?'       => lambda {|x,y|     x.casecmp(y) <= 0},
   :'char-ci>=?'       => lambda {|x,y|     x.casecmp(y) >= 0},
-  :'char-downcase'    => lambda {|x|       x.downcase},
+  :'char-downcase'    => lambda {|x|       RChar.new(x.downcase)},
   :'char-lower-case?' => lambda {|x|       x =~ /[a-z]/ && true || false},
   :'char-numeric?'    => lambda {|x|       x =~ /\d/    && true || false},
-  :'char-upcase'      => lambda {|x|       x.upcase},
+  :'char-upcase'      => lambda {|x|       RChar.new(x.upcase)},
   :'char-upper-case?' => lambda {|x|       x =~ /[A-Z]/ && true || false},
   :'char-whitespace?' => lambda {|x|       x =~ /\s/    && true || false},
   :'char->integer'    => lambda {|x|       x.ord},
@@ -301,7 +301,7 @@ $predefined_symbols = {
   :'imag-part'        => lambda {|x|       x.imaginary},
   :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
-  :'integer->char'    => lambda {|x|       RChar.new(x.chr)},
+  :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
   :'list-ref'         => lambda {|x,i|     x.fetch(i)},
   :'list->string'     => lambda {|x|       x.join},
   :'list->vector'     => lambda {|x|       RVector.new(x)},
@@ -328,7 +328,7 @@ $predefined_symbols = {
   :'string-copy'      => lambda {|x|       String.new(x)},
   :'string-fill!'     => lambda {|x,y|     x.gsub!(/./, y[0])},
   :'string-length'    => lambda {|x|       x.length},
-  :'string-ref'       => lambda {|x,i|     x[i]},
+  :'string-ref'       => lambda {|x,i|     RChar.new(x[i])},
   :'string-set!'      => lambda {|v,i,x|   v[i] = x},
   :'string->list'     => lambda {|x|       x.chars.map {|c| RChar.new(c)}},
   :'string->number'   => lambda {|x,r=nil| r ? x.to_i(r) : string_to_num(x) rescue false},
@@ -790,7 +790,6 @@ end
 #
 
 Rheme.reval_stream <<EOD
-
   (define (call-with-input-file name proc)
     (let* ((file (open-input-file name))
            (val (proc file)))
