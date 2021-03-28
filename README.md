@@ -1,6 +1,6 @@
-## Rheme: A toy Lisp mostly compatible with R4RS Scheme
+## Rheme: A Ruby implementation of R4RS Scheme
 
-Rheme is a full feautured toy Lisp preserving much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme includes all the essential features of R4RS Scheme and has some useful extensions as well. Incompatibilities with R4RS are noted below.
+Rheme is an inplementation of R4RS Scheme that preserves much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme includes all essential features of R4RS Scheme and has some useful extensions as well. Incompatibilities with R4RS are noted below.
 
 ### Differences between Rheme and R4RS Scheme
 
@@ -12,13 +12,9 @@ Rheme differs from R4RS in two ways:
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-2. Numeric literals use Ruby syntax:
+2. The radix arguments to `string->number` and `number->string` are only supported for integers.
 
-   `0.`, `0f0`, and `#b0` are not valid numbers.
-
-   `.3`, `5/8`, and `1+0.5i` are valid.
-
-There are other relatively minor differences. For example, Rheme's `call/cc` fails the "yin yang puzzle" test but works in most cases.
+There are other relatively minor differences. For example, Rheme's `call/cc` fails the "yin yang puzzle" test but works in typical cases.
 
 ### Extensions to R4RS
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
 # Rheme: The part of a clause that provides information about the theme
-#        or a toy Lisp mostly compatible with R4RS Scheme
+#        or a Ruby implementation of R4RS Scheme
 #
 # Copyright 2020 Marc Ferguson
 #
@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = "0.5_2"
+$rheme_version = '0.6_0'
 
 require 'cmath'
 require 'readline'
@@ -302,6 +302,7 @@ $predefined_symbols = {
   :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
+  :'last-pair'        => lambda {|x|       x[-2].equal?(:'.') ? x.last(3) : x.last(1)},
   :'list-ref'         => lambda {|x,i|     x.fetch(i)},
   :'list->string'     => lambda {|x|       x.join},
   :'list->vector'     => lambda {|x|       RVector.new(x)},
@@ -309,7 +310,7 @@ $predefined_symbols = {
   :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
   :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
   :'make-vector'      => lambda {|n,x=0|   RVector.new(n, x)},
-  :'number->string'   => lambda {|x,r=[]|  x.to_s(*r)},
+  :'number->string'   => lambda {|x,r=[]|  x.is_a?(Integer) ? x.to_s(*r) : x.to_s},
   :'open-input-file'  => lambda {|x|       InputPort.new(File.new(x, 'r'))},
   :'open-output-file' => lambda {|x|       File.new(x, 'w')},
   :'output-port?'     => lambda {|x|       x.is_a?(IO) && x.stat.writable?},
@@ -331,7 +332,7 @@ $predefined_symbols = {
   :'string-ref'       => lambda {|x,i|     RChar.new(x[i])},
   :'string-set!'      => lambda {|v,i,x|   v[i] = x},
   :'string->list'     => lambda {|x|       x.chars.map {|c| RChar.new(c)}},
-  :'string->number'   => lambda {|x,r=nil| r ? x.to_i(r) : string_to_num(x) rescue false},
+  :'string->number'   => lambda {|x,r=10|  x != '.' && string_to_num(x, r) rescue false},
   :'string->symbol'   => lambda {|x|       x.to_sym},
   :'string=?'         => lambda {|x,y|     x == y},
   :'string<?'         => lambda {|x,y|     x < y},
@@ -561,28 +562,43 @@ $predefined_symbols = {
     when ','            then [:unquote,            read_expr(input)]
     when ',@'           then [:'unquote-splicing', read_expr(input)]
     when /^(\.+|\+|-)$/ then token.to_sym
-    when /^[\d.+-]/
-      string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
+    when /^[\d.+-]/     then string_to_num(token)
     when /^"/
       fail RhemeError, "#{token} is not a string" unless token[-1] == '"'
       token[1..-2].gsub(/\\./).each {|x| x[1].tr('n', "\n")}
     when /^#/
       case token.downcase
-      when '#t'        then true
-      when '#f'        then false
-      when '#\space'   then RChar.new(' ')
-      when '#\newline' then RChar.new("\n")
-      when /^#\\.$/    then RChar.new(token[2])
+      when '#t'         then true
+      when '#f'         then false
+      when '#\space'    then RChar.new(' ')
+      when '#\newline'  then RChar.new("\n")
+      when /^#\\.$/     then RChar.new(token[2])
+      when /^#[eibodx]/ then string_to_num(token)
       else token.downcase.to_sym
       end
     else token.downcase.to_sym
     end
   end
 
-  def string_to_num(tok)
-    fail if tok[-1] == '.'  # Some versions of Rational() accept this case
-    Integer(tok) rescue Float(tok) rescue Rational(tok) rescue Complex(tok)
+  def string_to_num(str, radix = 10)
+    tok = str.downcase
+    exactness = tok.sub!(/^(#[bodx])?#[ei]/, '\1')
+    if tok =~ /^#[bodx]/
+      radix = {'b' => 2, 'o' => 8, 'd' => 10, 'x' => 16}.fetch(tok[1])
+      tok = tok[2..-1]
+    end
+    tok.sub!(/[^#]#+(\.#*)?([sfdle].*)?$/) {|z| z.tr('#', '0')}
+    num = raw_string_to_num(tok, radix)
+    !exactness ? num : (str =~ /#i/i) ? num.to_f : simplify(num.rationalize)
+  rescue
+    raise RhemeError, "#{str} is not a number"
   end
+
+  def raw_string_to_num(str, radix)
+    return Integer(str, radix) if radix != 10
+    return Integer(str) rescue str = str.tr('sfdl', 'e')
+    Float(str) rescue simplify(Rational(str)) rescue Complex(str)
+  end    
 
   #
   # Unreader
