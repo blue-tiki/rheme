@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.6_0'
+$rheme_version = '0.6_1'
 
 require 'cmath'
 require 'readline'
@@ -195,9 +195,12 @@ $predefined_symbols = {
   :car         => lambda {|x|    x.fetch(0)},
   :caar        => lambda {|x|    x.fetch(0).fetch(0)},
   :caaar       => lambda {|x|    x.fetch(0).fetch(0).fetch(0)},
+  :caaaar      => lambda {|x|    x.fetch(0).fetch(0).fetch(0).fetch(0)},
   :cadr        => lambda {|x|    x[1].equal?(:'.') ? x[2].fetch(0) : x.fetch(1)},
   :caddr       => lambda {|x|    x[2].equal?(:'.') ? x[3].fetch(0) : x.fetch(2)},
-  :cdr         => lambda {|x|    x[1].equal?(:'.') ? x.fetch(2)    : x.drop(1)},
+  :cadddr      => lambda {|x|    x[3].equal?(:'.') ? x[4].fetch(0) : x.fetch(3)},
+  :cdr         => lambda {|x|    x[1].equal?(:'.') ? x.fetch(2) : x.drop(1)},
+  :cdar        => lambda {|x|    a = x.fetch(0); a[1].equal?(:'.') ? a.fetch(2) : a.drop(1)},
   :ceiling     => lambda {|x|    x.ceil},
   :char?       => lambda {|x|    x.is_a?(RChar)},
   :complex?    => lambda {|x|    x.is_a?(Numeric)},
@@ -207,7 +210,7 @@ $predefined_symbols = {
   :display     => lambda {|x,y=$stdout| !y.write(x.is_a?(String) ? x : unread_expr(x))},
   :eq?         => lambda {|x,y|  rheme_eq(x, y)},
   :equal?      => lambda {|x,y|  x == y},
-  :error       => lambda {|x,*y| fail RhemeError, x},
+  :error       => lambda {|x,*y| fail RhemeError, [x, *y.map {|s| to_string(s)}].join(' ')},
   :eqv?        => lambda {|x,y|  rheme_eqv(x, y)},
   :even?       => lambda {|x|    x.even?},
   :exact?      => lambda {|x|    rheme_exact?(x)},
@@ -818,30 +821,27 @@ Rheme.reval_stream <<EOD
       (close-output-port file)
       val))
 
-  (define (cdar   x) (cdr   (car   x)))
   (define (cddr   x) (cdr   (cdr   x)))
   (define (caadr  x) (car   (cadr  x)))
   (define (cadar  x) (cadr  (car   x)))
   (define (cdaar  x) (cdr   (caar  x)))
   (define (cdadr  x) (cdr   (cadr  x)))
-  (define (cddar  x) (cdr   (cdr   (car  x))))
-  (define (cdddr  x) (cdr   (cdr   (cdr  x))))
-  (define (caaaar x) (caar  (caar  x)))
+  (define (cddar  x) (cdr   (cdar  x)))
+  (define (cdddr  x) (cdr   (cddr  x)))
   (define (caaadr x) (caar  (cadr  x)))
-  (define (caadar x) (car   (cadr  (car  x))))
+  (define (caadar x) (caar  (cdar  x)))
   (define (caaddr x) (car   (caddr x)))
   (define (cadaar x) (cadr  (caar  x)))
   (define (cadadr x) (cadr  (cadr  x)))
   (define (caddar x) (caddr (car   x)))
-  (define (cadddr x) (caddr (cdr   x)))
   (define (cdaaar x) (cdr   (caaar x)))
-  (define (cdaadr x) (cdr   (caar  (cdr  x))))
-  (define (cdadar x) (cdr   (cadr  (car  x))))
+  (define (cdaadr x) (cdar  (cadr  x)))
+  (define (cdadar x) (cdar  (cdar  x)))
   (define (cdaddr x) (cdr   (caddr x)))
-  (define (cddaar x) (cdr   (cdr   (caar x))))
-  (define (cddadr x) (cdr   (cdr   (cadr x))))
-  (define (cdddar x) (cdr   (cdr   (cdr  (car x)))))
-  (define (cddddr x) (cdr   (cdr   (cdr  (cdr x)))))
+  (define (cddaar x) (cddr  (caar  x)))
+  (define (cddadr x) (cddr  (cadr  x)))
+  (define (cdddar x) (cddr  (cdar  x)))
+  (define (cddddr x) (cddr  (cddr  x)))
 
   (define call-with-current-continuation call/cc)
 EOD
