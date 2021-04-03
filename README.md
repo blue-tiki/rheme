@@ -75,9 +75,9 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
   ```
   (logand -4 15)  =>  12
   ```
-* `random` returns a random number using Ruby's `Kernel#rand`.
+* `current-time` returns the system time in seconds.
 
-* `time` returns the system time in seconds.
+* `random` returns a random number using Ruby's `Kernel#rand`.
 
 * `quit` quits Rheme.
 

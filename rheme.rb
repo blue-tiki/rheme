@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.6_1'
+$rheme_version = '0.6_2'
 
 require 'cmath'
 require 'readline'
@@ -269,7 +269,6 @@ $predefined_symbols = {
   :substring   => lambda {|x,a,b| x[a...b]},
   :symbol?     => lambda {|x|    x.is_a?(Symbol)},
   :tan         => lambda {|x|    CMath.tan(x)},
-  :time        => lambda {||     Time.now.to_f},
   :truncate    => lambda {|x|    x.truncate},
   :vector      => lambda {|*x|   RVector.new(x)},
   :vector?     => lambda {|x|    x.is_a?(RVector)},
@@ -298,6 +297,7 @@ $predefined_symbols = {
   :'close-output-port' => lambda {|x|      !x.close    rescue false},
   :'current-input-port' => lambda {||      $stdin_port},
   :'current-output-port' => lambda {||     $stdout},
+  :'current-time'     => lambda {||        Time.now.to_f},
   :'eof-object?'      => lambda {|x|       x == :EOF},
   :'exact->inexact'   => lambda {|x|       x.to_f},
   :'for-each'         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
