@@ -109,5 +109,24 @@ or from irb
 or from the command line
   ```
   $ ./rheme.rb
-  rheme> 
+  rheme>  
+  ```
+
+### SICP Compatibility
+
+To get started working through the examples in SICP ("[Structure and Interpretation of Computer Programs](https://mitpress.mit.edu/sites/default/files/sicp/index.html)", Abelson and Sussman) it helps to define the following symbols:
+
+  ```
+  (define nil '())
+  (define true #t)
+  (define false #f)
+  (define runtime current-time)
+  ```
+For Section 3.5 "Streams" you can start with these definitions:
+  ```
+  (define the-empty-stream '())
+  (define stream-null? null?)
+
+  (define-macro (cons-stream a b)
+    `(cons ,a (delay ,b)))
   ```
