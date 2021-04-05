@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.6_2'
+$rheme_version = '0.7_0'
 
 require 'cmath'
 require 'readline'
@@ -550,16 +550,17 @@ $predefined_symbols = {
   def read_expr(input)
     token = input.next
     case token
-    when '(', '#('
-      exp = (token == '(' ? Array : RVector).new
-      exp.push(read_expr(input)) until input.peek == ')'
+    when '(', '#(', '['
+      terminator = token[-1].tr('([', ')]')
+      exp = (token == '#(') ? RVector.new : Array.new
+      exp.push(read_expr(input)) until input.peek == terminator
       input.next
       return exp unless exp.include?(:'.')
       fail RhemeError, "Unexpected '.'" unless exp.instance_of?(Array)
       exp[-2..-1] = exp[-1] while exp[-2] == :'.' && exp[-1].instance_of?(Array)
       return exp unless [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
       fail RhemeError, "Unexpected '.'" 
-    when ')'            then fail RhemeError, 'Unexpected )'
+    when ')', ']'       then fail RhemeError, "Unexpected #{token}"
     when "'"            then [:quote,              read_expr(input)]
     when "`"            then [:quasiquote,         read_expr(input)]
     when ','            then [:unquote,            read_expr(input)]
@@ -645,7 +646,7 @@ $predefined_symbols = {
 
   class InputPort < Enumerator
     attr_accessor :io, :scanner, :prompt
-    @@tokenizer = %r{\s+|,@|#\(|['`(),]|"(\\"|[^"])*"|#\\.\w*|;.*|[^\s()";]+}
+    @@tokenizer = %r{\s+|,@|#\(|['`(),\[\]]|"(\\"|[^"])*"|#\\.\w*|;.*|[^\s();"\[\]]+}
 
     def initialize(io)
       @scanner = StringScanner.new('')
