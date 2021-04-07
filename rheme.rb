@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.7_0'
+$rheme_version = '0.7_1'
 
 require 'cmath'
 require 'readline'
@@ -212,6 +212,7 @@ $predefined_symbols = {
   :equal?      => lambda {|x,y|  x == y},
   :error       => lambda {|x,*y| fail RhemeError, [x, *y.map {|s| to_string(s)}].join(' ')},
   :eqv?        => lambda {|x,y|  rheme_eqv(x, y)},
+  :eval        => lambda {|x,e=$toplevel_env| [:'tail-call()', x, e]},
   :even?       => lambda {|x|    x.even?},
   :exact?      => lambda {|x|    rheme_exact?(x)},
   :exit        => lambda {|x=1|  exit!(x)},
@@ -350,7 +351,10 @@ $predefined_symbols = {
   :'vector-ref'       => lambda {|v,i|     v.fetch(i)},
   :'vector-set!'      => lambda {|v,i,x|   v.fetch(i); v[i] = x},
   :'vector->list'     => lambda {|x|       Array.new(x)},
-  :'write-char'       => lambda {|x,y=$stdout| y.write(x); false}
+  :'write-char'       => lambda {|x,y=$stdout| y.write(x); false},
+  :'interaction-environment'   => lambda {||    $toplevel_env},
+  :'null-environment'          => lambda {|v=0| Env.new},
+  :'scheme-report-environment' => lambda {|v=0| $scheme_env}
   }
 
   $toplevel_env = Env.new.update($predefined_symbols)
@@ -529,7 +533,6 @@ $predefined_symbols = {
     :define         => method(:rheme_define),
     :delay          => method(:rheme_delay),
     :do             => method(:rheme_do),
-    :eval           => lambda {|x, env| reval(reval(x[1], env), env)},
     :if             => method(:rheme_if),
     :lambda         => method(:rheme_lambda),
     :let            => method(:rheme_let),
@@ -846,6 +849,8 @@ Rheme.reval_stream <<EOD
 
   (define call-with-current-continuation call/cc)
 EOD
+
+$scheme_env = $toplevel_env.dup.freeze
 
 #
 # Command Line
