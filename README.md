@@ -4,17 +4,15 @@ Rheme is an inplementation of R4RS Scheme that preserves much of the simplicity 
 
 ### Differences between Rheme and R4RS Scheme
 
-Rheme differs from R4RS in two ways:
+Rheme differs from R4RS in one important way:
 
-1. Lists do not share structure. The following fuctions are affected:
+* Lists do not share structure. The following fuctions are affected:
 
    `cdr`, `member`, `memq`, and `memv` copy their return value if it is a list.
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-2. The radix arguments to `string->number` and `number->string` are only supported for integers.
-
-There are other relatively minor differences. For example, Rheme's `call/cc` fails the "yin yang puzzle" test but works in typical cases.
+There are other relatively minor differences. For example, the radix arguments to `string->number` and `number->string` are only supported for integers.
 
 ### Extensions to R4RS
 
@@ -30,7 +28,7 @@ There are other relatively minor differences. For example, Rheme's `call/cc` fai
                         (let ((val (gensym)))
                           `(let ((,val ,first)) ,@rest ,val)))
   ```
-* Lambda expressions accept `#!optional and #!rest` arguments as in MIT Scheme:
+* Lambda expressions accept `#!optional` and `#!rest` arguments as in MIT Scheme:
   ```
   (define (fun #!optional a #!rest b)
     (list a b))

@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.7_1'
+$rheme_version = '0.8_0'
 
 require 'cmath'
 require 'readline'
@@ -52,7 +52,7 @@ module Rheme
   class Env < Hash
     def initialize(outer = nil, bindings = [])
       @outer = outer
-      bindings.each {|var, expr| let_var(var, Rheme.reval(expr, outer))}
+      bindings.each {|var, value| store(Rheme.assert_var(var), value)}
     end
 
     def let_var(var, value)
@@ -229,7 +229,7 @@ $predefined_symbols = {
   :length      => lambda {|x|    x.length},
   :list        => lambda {|*x|   x},
   :list?       => lambda {|x|    x.instance_of?(Array) && ! x[-2].equal?(:'.')},
-  :load        => lambda {|x,v=false| File.open(x, 'r') {|f| reval_stream(f, v)}},
+  :load        => lambda {|x,v=false| File.open(x, 'r') {|f| !reval_stream(f, v)}},
   :log         => lambda {|x|    CMath.log(x)},
   :logand      => lambda {|*x|   x.inject(-1, :&)},
   :logior      => lambda {|*x|   x.inject(0, :|)},
@@ -306,7 +306,6 @@ $predefined_symbols = {
   :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
-  :'last-pair'        => lambda {|x|       x[-2].equal?(:'.') ? x.last(3) : x.last(1)},
   :'list-ref'         => lambda {|x,i|     x.fetch(i)},
   :'list->string'     => lambda {|x|       x.join},
   :'list->vector'     => lambda {|x|       RVector.new(x)},
@@ -417,7 +416,7 @@ $predefined_symbols = {
 
   def rheme_do(x, outer)
     # (do ((var1 init1 step1) (var2 init2 step2) ...) (test ...) ...)
-    env = Env.new(outer, x[1])
+    env = Env.new(outer, x[1].map {|var, expr| [var, reval(expr, outer)]})
     until reval(x[2][0], env)
       x.drop(3).each {|expr| reval(expr, env)}
       new_vals = x[1].map {|var| reval(var[2], env) if var.length > 2}
@@ -467,10 +466,10 @@ $predefined_symbols = {
     # (let ((var1 val1) (var2 val2) ...) ...)
     # (let fun ((arg1 init1) (arg2 init2) ...) ...)
     if x[1].instance_of?(Array)
-      env = Env.new(outer, x[1])
+      env = Env.new(outer, x[1].map {|var, expr| [var, reval(expr, outer)]})
       rheme_begin(x, env, 2)
     else
-      env = Env.new(outer, x[2])
+      env = Env.new(outer, x[2].map {|var, expr| [var, reval(expr, outer)]})
       form = [x[1], *x[2].map(&:first)]
       env.let_var(x[1], rheme_lambda([:'named-lambda', form, *x.drop(3)], env))
       [:'tail-call()', form, env]
@@ -480,8 +479,7 @@ $predefined_symbols = {
   def rheme_letstar(x, outer)
     env = x[1].empty? ? Env.new(outer) : outer
     x[1].each do |var, expr|
-      env = Env.new(env)
-      env.let_var(var, reval(expr, env))
+      env = Env.new(env, [[var, reval(expr, env)]])
     end
     rheme_begin(x, env, 2)
   end
