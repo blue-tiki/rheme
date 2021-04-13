@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_0'
+$rheme_version = '0.8_1'
 
 require 'cmath'
 require 'readline'
@@ -39,6 +39,10 @@ module Rheme
   def assert_var(x)
     return x if x.is_a?(Symbol)
     fail RhemeError, "#{to_string(x)} is not a variable"
+  end
+
+  def simplify(x)
+    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
   end
 
   def tail_call?(x)
@@ -102,6 +106,7 @@ module Rheme
       puts ' ' * $debug_stack.size + to_string(expr) if $trace_eval
 
       $debug_stack.push(expr)
+      fail RhemeError, "#{to_string(expr)} is not a proper list" if expr[-2].equal?(:'.')
       special_form = $special_forms[expr.first]
       if special_form
         val = special_form.call(expr, env)
@@ -126,7 +131,7 @@ module Rheme
   # Base Language
   #
 
-  def apply(fun, args)
+  def callt(fun, args)
     val = fun.call(*args)
     tail_call?(val) ? reval(val[1], val[2]) : val
   end
@@ -165,10 +170,6 @@ module Rheme
     read_expr(input)
   rescue StopIteration
     raise RhemeError, 'Unexpected EOF'
-  end
-
-  def simplify(x)
-    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
   end
 
 $predefined_symbols = {
@@ -236,7 +237,7 @@ $predefined_symbols = {
   :lognot      => lambda {|x|    ~x},
   :logxor      => lambda {|*x|   x.inject(0, :^)},
   :magnitude   => lambda {|x|    x.magnitude},
-  :map         => lambda {|p,a,*b| c = a.zip(*b); Array.new(c.size) {|i| apply(p, c[i])}},
+  :map         => lambda {|p,a,*b| c = a.zip(*b); Array.new(c.size) {|i| callt(p, c[i])}},
   :max         => lambda {|*x|   x.max},
   :member      => lambda {|x,y|  a = y.drop_while {|z| x != z};           !a.empty? && a},
   :memq        => lambda {|x,y|  a = y.drop_while {|z| !rheme_eq(x, z)};  !a.empty? && a},
@@ -256,6 +257,7 @@ $predefined_symbols = {
   :quit        => lambda {||     raise SystemExit},
   :quotient    => lambda {|x,y|  x.quo(y).truncate},
   :random      => lambda {|*x|   rand(*x)},
+  :rationalize => lambda {|x,y|  simplify(x.rationalize(y))},
   :rational?   => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :read        => lambda {|x=$stdin_port| rheme_read(x)},
   :real?       => lambda {|x|    x.is_a?(Numeric) && x == x.real},
@@ -263,7 +265,7 @@ $predefined_symbols = {
   :reverse     => lambda {|x|    x.reverse},
   :round       => lambda {|x|    x.round},
   :sin         => lambda {|x|    CMath.sin(x)},
-  :sort        => lambda {|x,p|  x.sort {|*a| apply(p, a) ? -1 : 1}},
+  :sort        => lambda {|x,p|  x.sort {|*a| callt(p, a) ? -1 : 1}},
   :sqrt        => lambda {|x|    CMath.sqrt(x)},
   :string      => lambda {|*x|   x.join},
   :string?     => lambda {|x|    x.instance_of?(String)},
@@ -301,7 +303,7 @@ $predefined_symbols = {
   :'current-time'     => lambda {||        Time.now.to_f},
   :'eof-object?'      => lambda {|x|       x == :EOF},
   :'exact->inexact'   => lambda {|x|       x.to_f},
-  :'for-each'         => lambda {|p,a,*b|  a.zip(*b) {|args| apply(p, args)}; false},
+  :'for-each'         => lambda {|p,a,*b|  a.zip(*b) {|args| callt(p, args)}; false},
   :'imag-part'        => lambda {|x|       x.imaginary},
   :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
@@ -353,7 +355,7 @@ $predefined_symbols = {
   :'write-char'       => lambda {|x,y=$stdout| y.write(x); false},
   :'interaction-environment'   => lambda {||    $toplevel_env},
   :'null-environment'          => lambda {|v=0| Env.new},
-  :'scheme-report-environment' => lambda {|v=0| $scheme_env}
+  :'scheme-report-environment' => lambda {|v=0| $rheme_env}
   }
 
   $toplevel_env = Env.new.update($predefined_symbols)
@@ -404,6 +406,7 @@ $predefined_symbols = {
   end
 
   def rheme_delay(source, env, memo = nil, forced = false)
+    fail RhemeError, 'Too many arguments' if source.length > 2
     Promise.new(source) do
       unless forced
         val = reval(source[1] || false, env)
@@ -562,12 +565,12 @@ $predefined_symbols = {
       return exp unless [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
       fail RhemeError, "Unexpected '.'" 
     when ')', ']'       then fail RhemeError, "Unexpected #{token}"
-    when "'"            then [:quote,              read_expr(input)]
+    when "'", "\u2019"  then [:quote,              read_expr(input)]
     when "`"            then [:quasiquote,         read_expr(input)]
     when ','            then [:unquote,            read_expr(input)]
     when ',@'           then [:'unquote-splicing', read_expr(input)]
-    when /^(\.+|\+|-)$/ then token.to_sym
-    when /^[\d.+-]/     then string_to_num(token)
+    when '.'            then :'.'
+    when /^[\d.+-]/     then string_to_num(token) rescue token.downcase.to_sym
     when /^"/
       fail RhemeError, "#{token} is not a string" unless token[-1] == '"'
       token[1..-2].gsub(/\\./).each {|x| x[1].tr('n', "\n")}
@@ -578,8 +581,9 @@ $predefined_symbols = {
       when '#\space'    then RChar.new(' ')
       when '#\newline'  then RChar.new("\n")
       when /^#\\.$/     then RChar.new(token[2])
-      when /^#[eibodx]/ then string_to_num(token)
-      else token.downcase.to_sym
+      when /^#[eibodx]/
+        string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
+      else fail RhemeError, "Unsupported reader syntax: #{token}"
       end
     else token.downcase.to_sym
     end
@@ -592,17 +596,15 @@ $predefined_symbols = {
       radix = {'b' => 2, 'o' => 8, 'd' => 10, 'x' => 16}.fetch(tok[1])
       tok = tok[2..-1]
     end
-    tok.sub!(/[^#]#+(\.#*)?([sfdle].*)?$/) {|z| z.tr('#', '0')}
+    tok.tr!('sfdl', 'e')
+    tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
     !exactness ? num : (str =~ /#i/i) ? num.to_f : simplify(num.rationalize)
-  rescue
-    raise RhemeError, "#{str} is not a number"
   end
 
   def raw_string_to_num(str, radix)
     return Integer(str, radix) if radix != 10
-    return Integer(str) rescue str = str.tr('sfdl', 'e')
-    Float(str) rescue simplify(Rational(str)) rescue Complex(str)
+    Integer(str) rescue Float(str) rescue simplify(Rational(str)) rescue Complex(str)
   end    
 
   #
@@ -647,7 +649,7 @@ $predefined_symbols = {
 
   class InputPort < Enumerator
     attr_accessor :io, :scanner, :prompt
-    @@tokenizer = %r{\s+|,@|#\(|['`(),\[\]]|"(\\"|[^"])*"|#\\.\w*|;.*|[^\s();"\[\]]+}
+    @@tokenizer = %r{\s+|,@|#\(|[()'`,\[\]\u2019]|"(\\"|[^"])*"|#\\.\w*|;.*|[^\s();"\[\]]+}
 
     def initialize(io)
       @scanner = StringScanner.new('')
@@ -744,7 +746,7 @@ $predefined_symbols = {
 
     expander = reval(source, outer)
     $special_forms[name] = Macro.new(source) do |form, env|
-      expansion = apply(expander, form.drop(1))
+      expansion = callt(expander, form.drop(1))
       expansion = [:begin, expansion] unless expansion.instance_of?(Array)
       [:'tail-call()', form.replace(expansion), env]
     end
@@ -786,7 +788,7 @@ $predefined_symbols = {
         tracer = Tracer.new(target) do |*args|
           $trace_depth += 1
           puts ' ' * $trace_depth + Rheme.to_string([name, *args])
-          val = Rheme.apply(target, args)
+          val = Rheme.callt(target, args)
           puts ' ' * $trace_depth + Rheme.to_string(val)
           $trace_depth -= 1
           val
@@ -848,7 +850,7 @@ Rheme.reval_stream <<EOD
   (define call-with-current-continuation call/cc)
 EOD
 
-$scheme_env = $toplevel_env.dup.freeze
+$rheme_env = $toplevel_env.dup.freeze
 
 #
 # Command Line
