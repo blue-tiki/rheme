@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_1'
+$rheme_version = '0.8_2'
 
 require 'cmath'
 require 'readline'
@@ -443,7 +443,7 @@ $predefined_symbols = {
       args[vars.length-1] = args.pop([1 + args.length - vars.length, 0].max) if rest_argp
       fail RhemeError, 'Too many arguments' if args.length > vars.length
       env = Env.new(outer)
-      vars.zip(args) {|var, arg| env.let_var(var, arg)}
+      vars.zip(args) {|var, arg| env.let_var(var, arg || false)}
       rheme_begin(source, env, 2)
     end
   end
@@ -581,6 +581,7 @@ $predefined_symbols = {
       when '#\space'    then RChar.new(' ')
       when '#\newline'  then RChar.new("\n")
       when /^#\\.$/     then RChar.new(token[2])
+      when /^#!/        then token.downcase.to_sym
       when /^#[eibodx]/
         string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
       else fail RhemeError, "Unsupported reader syntax: #{token}"
