@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_2'
+$rheme_version = '0.8_3'
 
 require 'cmath'
 require 'readline'
@@ -39,10 +39,6 @@ module Rheme
   def assert_var(x)
     return x if x.is_a?(Symbol)
     fail RhemeError, "#{to_string(x)} is not a variable"
-  end
-
-  def simplify(x)
-    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
   end
 
   def tail_call?(x)
@@ -172,6 +168,10 @@ module Rheme
     raise RhemeError, 'Unexpected EOF'
   end
 
+  def simplify(x)
+    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
+  end
+
 $predefined_symbols = {
   :+           => lambda {|*x|   x.inject(0, :+)},
   :*           => lambda {|*x|   simplify(x.inject(1, :*))},
@@ -229,7 +229,7 @@ $predefined_symbols = {
   :lcm         => lambda {|*x|   x.inject(1, :lcm)},
   :length      => lambda {|x|    x.length},
   :list        => lambda {|*x|   x},
-  :list?       => lambda {|x|    x.instance_of?(Array) && ! x[-2].equal?(:'.')},
+  :list?       => lambda {|x|    x.instance_of?(Array) && x[-2] != :'.'},
   :load        => lambda {|x,v=false| File.open(x, 'r') {|f| !reval_stream(f, v)}},
   :log         => lambda {|x|    CMath.log(x)},
   :logand      => lambda {|*x|   x.inject(-1, :&)},
@@ -276,7 +276,7 @@ $predefined_symbols = {
   :vector      => lambda {|*x|   RVector.new(x)},
   :vector?     => lambda {|x|    x.is_a?(RVector)},
   :write       => lambda {|x,y=$stdout| y.write(unread_expr(x)); false},
-  :zero?       => lambda {|x|    x == 0},
+  :zero?       => lambda {|x|    x.zero?},
   :'call/cc'          => lambda {|x|       rheme_callcc(x)},
   :'char-alphabetic?' => lambda {|x|       x =~ /[A-Za-z]/ && true || false},
   :'char-ci=?'        => lambda {|x,y|     x.casecmp(y) == 0},
@@ -488,8 +488,9 @@ $predefined_symbols = {
   end
 
   def rheme_letrec(x, outer)
-    env = Env.new(outer)
-    x[1].each {|var, expr| env.let_var(var, reval(expr, env))}
+    env = Env.new(outer, x[1].map(&:first))
+    bindings = x[1].map {|var, expr| [var, reval(expr, env)]}
+    bindings.each {|var, val| env.store(var, val)}
     rheme_begin(x, env, 2)
   end
 
@@ -744,8 +745,8 @@ $predefined_symbols = {
     if prev && ! (prev.is_a?(Macro) && prev.source == source)
       warn "Warning: Redefinition of keyword or macro: #{name}"
     end
-
     expander = reval(source, outer)
+
     $special_forms[name] = Macro.new(source) do |form, env|
       expansion = callt(expander, form.drop(1))
       expansion = [:begin, expansion] unless expansion.instance_of?(Array)
