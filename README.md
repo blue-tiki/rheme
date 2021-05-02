@@ -109,6 +109,7 @@ or from the command line
   $ ./rheme.rb
   rheme>  
   ```
+Rheme should run on Ruby versions 2.5.0 or newer.
 
 ### SICP Compatibility
 
@@ -128,3 +129,10 @@ For Section 3.5 "Streams" you can start with these definitions:
   (define-macro (cons-stream a b)
     `(cons ,a (delay ,b)))
   ```
+
+### R5RS Incompatibility
+
+In addition to shared list structure, the R5RS required features not supported by Rheme are:
+
+* `define-syntax`, `let-syntax`, `letrec-syntax`, `dynamic-wind`
+* `values`, `call-with-values`, `list-tail`, `char-ready?`
