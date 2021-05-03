@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_3_1'
+$rheme_version = '0.8_3_2'
 
 require 'cmath'
 require 'readline'
@@ -172,8 +172,12 @@ module Rheme
     raise RhemeError, 'Unexpected EOF'
   end
 
-  def simplify(x)
-    (x.is_a?(Rational) && x.denominator == 1) ? x.numerator : x
+  def round_ties_to_even(n)
+    n.modulo(1) == 1/2r ? n.quo(2).round * 2 : n.round
+  end
+
+  def simplify(n)
+    (n.is_a?(Rational) && n.denominator == 1) ? n.numerator : n
   end
 
 $predefined_symbols = {
@@ -267,7 +271,7 @@ $predefined_symbols = {
   :real?       => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :remainder   => lambda {|x,y|  x.remainder(y)},
   :reverse     => lambda {|x|    x.reverse},
-  :round       => lambda {|x|    x.round},
+  :round       => lambda {|x|    round_ties_to_even(x)},
   :sin         => lambda {|x|    CMath.sin(x)},
   :sort        => lambda {|x,p|  x.sort {|*a| callt(p, a) ? -1 : 1}},
   :sqrt        => lambda {|x|    CMath.sqrt(x)},
@@ -707,7 +711,7 @@ $predefined_symbols = {
   def repl(prompt = 'rheme> ')
     puts "Rheme version #$rheme_version" if prompt == 'rheme> '
     repl_port = InputPort.new(:REPL)
-    loop do
+    while true
       begin
         incomplete_expr = repl_port.scanner.rest.gsub(/^\s*(;.*)?|\n$/, '')
         repl_port.prompt = prompt + incomplete_expr
