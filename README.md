@@ -12,7 +12,7 @@ Rheme differs from R4RS in one important way:
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-There are other relatively minor differences. For example, the radix arguments to `string->number` and `number->string` are only supported for integers.
+There are other relatively minor differences. For example, radix prefixes and the radix arguments to `string->number` and `number->string` are only supported for integers.
 
 ### Extensions to R4RS
 
@@ -109,7 +109,7 @@ or from the command line
   $ ./rheme.rb
   rheme>  
   ```
-Rheme should run on Ruby versions 2.5.0 or newer.
+Rheme should run on Ruby versions 2.5.0 and newer.
 
 ### SICP Compatibility
 
@@ -132,7 +132,7 @@ For Section 3.5 "Streams" you can start with these definitions:
 
 ### R5RS Incompatibility
 
-In addition to shared list structure, the R5RS required features not supported by Rheme are:
+The R5RS required features not supported by Rheme are:
 
 * `define-syntax`, `let-syntax`, `letrec-syntax`, `dynamic-wind`
 * `values`, `call-with-values`, `list-tail`, `char-ready?`
