@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_3'
+$rheme_version = '0.8_3_1'
 
 require 'cmath'
 require 'readline'
@@ -102,8 +102,7 @@ module Rheme
       puts ' ' * $debug_stack.size + to_string(expr) if $trace_eval
 
       $debug_stack.push(expr)
-      fail RhemeError, "#{to_string(expr)} is not a proper list" if expr[-2].equal?(:'.')
-      special_form = $special_forms[expr.first]
+      special_form = $special_forms[assert_list(expr).first]
       if special_form
         val = special_form.call(expr, env)
       else
@@ -126,6 +125,11 @@ module Rheme
   #
   # Base Language
   #
+
+  def assert_list(x)
+    return x unless x[-2].equal?(:'.')
+    fail RhemeError, "#{to_string(x)} is not a proper list"
+  end
 
   def callt(fun, args)
     val = fun.call(*args)
@@ -308,9 +312,9 @@ $predefined_symbols = {
   :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
-  :'list-ref'         => lambda {|x,i|     x.fetch(i)},
-  :'list->string'     => lambda {|x|       x.join},
-  :'list->vector'     => lambda {|x|       RVector.new(x)},
+  :'list-ref'         => lambda {|x,i|     x[-2] == :'.' ? x[0..-2].fetch(i) : x.fetch(i)},
+  :'list->string'     => lambda {|x|       assert_list(x).join},
+  :'list->vector'     => lambda {|x|       RVector.new(assert_list(x))},
   :'make-polar'       => lambda {|r,t|     Complex.polar(r, t)},
   :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
   :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
