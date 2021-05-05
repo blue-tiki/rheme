@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_4'
+$rheme_version = '0.8_4_1'
 
 require 'cmath'
 require 'readline'
@@ -81,7 +81,7 @@ module Rheme
 
     def to_s
       s = self.class.to_s.sub('Rheme::', '')
-      source[0].equal?(:'named-lambda') ? "#<#{s}: #{source[1][0]}>" : "#<#{s}>"
+      source[0] == :'named-lambda' ? "#<#{s}: #{source[1][0]}>" : "#<#{s}>"
     end
   end
 
@@ -107,9 +107,9 @@ module Rheme
         val = special_form.call(expr, env)
       else
         # use Array.new here because map doesn't play well with callcc
-        f, *args = Array.new(expr.length) {|i| reval(expr[i], env)}
-        fail RhemeError, "#{to_string(f)} is not a procedure" unless f.is_a?(Proc)
-        val = f.call(*args)
+        fun, *args = Array.new(expr.length) {|i| reval(expr[i], env)}
+        fail RhemeError, "#{to_string(fun)} is not a procedure" unless fun.is_a?(Proc)
+        val = fun.call(*args)
       end
       $debug_stack.pop
 
@@ -387,7 +387,7 @@ $predefined_symbols = {
     key = reval(x[1], env)
     clause = x.drop(2).find {|c| c[0] == :else || c[0].any? {|d| rheme_eqv(d, key)}}
     return false unless clause
-    return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
+    return rheme_begin(clause, env) unless clause[1] == :'=>'
     [:'tail-call()', [clause[2], [:quote, key]], env]
   end 
 
@@ -396,7 +396,7 @@ $predefined_symbols = {
     clause = x.drop(1).find {|c| test = (c[0] == :else || reval(c[0], env))}
     return false unless clause
     return test if clause.length == 1 && clause[0] != :else
-    return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
+    return rheme_begin(clause, env) unless clause[1] == :'=>'
     [:'tail-call()', [clause[2], [:quote, test]], env]
   end
 
@@ -590,7 +590,7 @@ $predefined_symbols = {
       when '#\space'    then RChar.new(' ')
       when '#\newline'  then RChar.new("\n")
       when /^#\\.$/     then RChar.new(token[2])
-      when /^#!/        then token.downcase.to_sym
+      when /^#[!:]/     then token.downcase.to_sym
       when /^#[eibodx]/
         string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
       else fail RhemeError, "Unsupported reader syntax: #{token}"
