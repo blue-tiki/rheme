@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_3_2'
+$rheme_version = '0.8_4'
 
 require 'cmath'
 require 'readline'
@@ -158,7 +158,8 @@ module Rheme
   end
 
   def rheme_eqv(a, b)
-    rheme_eq(a, b) || (a.is_a?(Numeric) && a == b && rheme_exact?(a) == rheme_exact?(b))
+    return true if rheme_eq(a, b) || (a.is_a?(RChar) && a == b)
+    a.is_a?(Numeric) && a == b && rheme_exact?(a) == rheme_exact?(b)
   end
 
   def rheme_exact?(n)
@@ -224,7 +225,7 @@ $predefined_symbols = {
   :eval        => lambda {|x,e=$toplevel_env| [:'tail-call()', x, e]},
   :even?       => lambda {|x|    x.even?},
   :exact?      => lambda {|x|    rheme_exact?(x)},
-  :exit        => lambda {|x=1|  exit!(x)},
+  :exit        => lambda {|x=0|  exit!(x)},
   :exp         => lambda {|x|    CMath.exp(x)},
   :expt        => lambda {|x,y|  simplify(x ** y)},
   :floor       => lambda {|x|    x.floor},
@@ -362,8 +363,8 @@ $predefined_symbols = {
   :'vector->list'     => lambda {|x|       Array.new(x)},
   :'write-char'       => lambda {|x,y=$stdout| y.write(x); false},
   :'interaction-environment'   => lambda {||    $toplevel_env},
-  :'null-environment'          => lambda {|v=0| Env.new},
-  :'scheme-report-environment' => lambda {|v=0| $rheme_env}
+  :'scheme-report-environment' => lambda {|v=0| $rheme_env},
+  :'null-environment'          => lambda {|v=0| Env.new}
   }
 
   $toplevel_env = Env.new.update($predefined_symbols)
@@ -384,7 +385,7 @@ $predefined_symbols = {
 
   def rheme_case(x, env)
     key = reval(x[1], env)
-    clause = x.drop(2).find {|c| c[0].equal?(:else) || c[0].include?(key)}
+    clause = x.drop(2).find {|c| c[0] == :else || c[0].any? {|d| rheme_eqv(d, key)}}
     return false unless clause
     return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
     [:'tail-call()', [clause[2], [:quote, key]], env]
@@ -392,10 +393,9 @@ $predefined_symbols = {
 
   def rheme_cond(x, env)
     test = false
-    clause = x.drop(1).find {|c| test = c[0].equal?(:else) || reval(c[0], env)}
+    clause = x.drop(1).find {|c| test = (c[0] == :else || reval(c[0], env))}
     return false unless clause
-    return rheme_begin(clause, env) if clause[0].equal?(:else)
-    return test if clause.length == 1
+    return test if clause.length == 1 && clause[0] != :else
     return rheme_begin(clause, env) unless clause[1].equal?(:'=>')
     [:'tail-call()', [clause[2], [:quote, test]], env]
   end
@@ -532,7 +532,7 @@ $predefined_symbols = {
 
   def rheme_source(x, env)
     target = $special_forms[x[1]] || reval(x[1], env)
-    target.is_a?(Lambda) && target.source
+    target.is_a?(Lambda) ? target.source : []
   end
 
   $special_forms = {
@@ -787,7 +787,7 @@ $predefined_symbols = {
 
     def initialize(target)
       @target = target
-      super(target.is_a?(Lambda) && target.source)
+      super(target.is_a?(Lambda) ? target.source : [])
     end
   end
 
@@ -797,9 +797,9 @@ $predefined_symbols = {
       if target.is_a?(Proc) && !target.is_a?(Tracer) && !target.is_a?(Promise)
         tracer = Tracer.new(target) do |*args|
           $trace_depth += 1
-          puts ' ' * $trace_depth + Rheme.to_string([name, *args])
-          val = Rheme.callt(target, args)
-          puts ' ' * $trace_depth + Rheme.to_string(val)
+          puts ' ' * $trace_depth + to_string([name, *args])
+          val = callt(target, args)
+          puts ' ' * $trace_depth + to_string(val)
           $trace_depth -= 1
           val
         end
