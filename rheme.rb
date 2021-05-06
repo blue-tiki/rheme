@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_4_1'
+$rheme_version = '0.8_5'
 
 require 'cmath'
 require 'readline'
@@ -159,11 +159,11 @@ module Rheme
 
   def rheme_eqv(a, b)
     return true if rheme_eq(a, b) || (a.is_a?(RChar) && a == b)
-    a.is_a?(Numeric) && a == b && rheme_exact?(a) == rheme_exact?(b)
+    a.is_a?(Numeric) && a == b && rheme_inexact?(a) == rheme_inexact?(b)
   end
 
-  def rheme_exact?(n)
-    n.is_a?(Integer) || n.is_a?(Rational)
+  def rheme_inexact?(n)
+    n.real? ? n.is_a?(Float) : n.rect.any?(Float)
   end
 
   def rheme_read(input)
@@ -171,6 +171,15 @@ module Rheme
     read_expr(input)
   rescue StopIteration
     raise RhemeError, 'Unexpected EOF'
+  end
+
+  def rheme_to_exact(n)
+    return simplify(n.rationalize) if n.real?
+    Complex(rheme_to_exact(n.real), rheme_to_exact(n.imaginary))
+  end
+
+  def inexact_contagion(n, *args)
+    args.any? {|a| rheme_inexact?(a)} ? n * 1.0 : n
   end
 
   def round_ties_to_even(n)
@@ -182,9 +191,9 @@ module Rheme
   end
 
 $predefined_symbols = {
-  :+           => lambda {|*x|   x.inject(0, :+)},
+  :+           => lambda {|*x|   simplify(x.inject(0, :+))},
   :*           => lambda {|*x|   simplify(x.inject(1, :*))},
-  :-           => lambda {|x,*y| y.empty? ? -x : y.inject(x, :-)},
+  :-           => lambda {|x,*y| simplify(y.empty? ? -x : y.inject(x, :-))},
   :'/'         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
   :'='         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
   :'<'         => lambda {|*x|   x.each_cons(2).all? {|a, b| a <  b}},
@@ -211,12 +220,12 @@ $predefined_symbols = {
   :cadddr      => lambda {|x|    x[3].equal?(:'.') ? x[4].fetch(0) : x.fetch(3)},
   :cdr         => lambda {|x|    x[1].equal?(:'.') ? x.fetch(2) : x.drop(1)},
   :cdar        => lambda {|x|    a = x.fetch(0); a[1].equal?(:'.') ? a.fetch(2) : a.drop(1)},
-  :ceiling     => lambda {|x|    x.ceil},
+  :ceiling     => lambda {|x|    inexact_contagion(x.ceil, x)},
   :char?       => lambda {|x|    x.is_a?(RChar)},
   :complex?    => lambda {|x|    x.is_a?(Numeric)},
   :cons        => lambda {|x,y|  y.instance_of?(Array) ? [x].concat(y) : [x, :'.', y]},
   :cos         => lambda {|x|    CMath.cos(x)},
-  :denominator => lambda {|x|    x.denominator},
+  :denominator => lambda {|x|    inexact_contagion(x.denominator, x)},
   :display     => lambda {|x,y=$stdout| !y.write(x.is_a?(String) ? x : unread_expr(x))},
   :eq?         => lambda {|x,y|  rheme_eq(x, y)},
   :equal?      => lambda {|x,y|  x == y},
@@ -224,16 +233,16 @@ $predefined_symbols = {
   :eqv?        => lambda {|x,y|  rheme_eqv(x, y)},
   :eval        => lambda {|x,e=$toplevel_env| [:'tail-call()', x, e]},
   :even?       => lambda {|x|    x.even?},
-  :exact?      => lambda {|x|    rheme_exact?(x)},
+  :exact?      => lambda {|x|    x.is_a?(Numeric) && !rheme_inexact?(x)},
   :exit        => lambda {|x=0|  exit!(x)},
   :exp         => lambda {|x|    CMath.exp(x)},
   :expt        => lambda {|x,y|  simplify(x ** y)},
-  :floor       => lambda {|x|    x.floor},
+  :floor       => lambda {|x|    inexact_contagion(x.floor, x)},
   :force       => lambda {|x|    x.is_a?(Promise) ? x.call : x},
   :format      => lambda {|*x|   rheme_format(*x)},
   :gcd         => lambda {|*x|   x.inject(0, :gcd)},
   :gensym      => lambda {||     :"#:G#{@@gensym ||= 0; @@gensym += 1}"},
-  :inexact?    => lambda {|x|    !rheme_exact?(x)},
+  :inexact?    => lambda {|x|    x.is_a?(Numeric) && rheme_inexact?(x)},
   :integer?    => lambda {|x|    x.is_a?(Numeric) && x == x.real.round},
   :lcm         => lambda {|*x|   x.inject(1, :lcm)},
   :length      => lambda {|x|    x.length},
@@ -247,32 +256,32 @@ $predefined_symbols = {
   :logxor      => lambda {|*x|   x.inject(0, :^)},
   :magnitude   => lambda {|x|    x.magnitude},
   :map         => lambda {|p,a,*b| c = a.zip(*b); Array.new(c.size) {|i| callt(p, c[i])}},
-  :max         => lambda {|*x|   x.max},
+  :max         => lambda {|*x|   inexact_contagion(x.max, *x)},
   :member      => lambda {|x,y|  a = y.drop_while {|z| x != z};           !a.empty? && a},
   :memq        => lambda {|x,y|  a = y.drop_while {|z| !rheme_eq(x, z)};  !a.empty? && a},
   :memv        => lambda {|x,y|  a = y.drop_while {|z| !rheme_eqv(x, z)}; !a.empty? && a},
-  :min         => lambda {|*x|   x.min},
+  :min         => lambda {|*x|   inexact_contagion(x.min, *x)},
   :modulo      => lambda {|x,y|  x % y},
   :negative?   => lambda {|x|    x < 0},
   :newline     => lambda {|x=$stdout| x.puts; false},
   :not         => lambda {|x|    !x},
   :null?       => lambda {|x|    x.instance_of?(Array) && x.empty?},
   :number?     => lambda {|x|    x.is_a?(Numeric)},
-  :numerator   => lambda {|x|    x.numerator},
+  :numerator   => lambda {|x|    inexact_contagion(x.numerator, x)},
   :odd?        => lambda {|x|    x.odd?},
   :pair?       => lambda {|x|    x.instance_of?(Array) && !x.empty?},
   :positive?   => lambda {|x|    x > 0},
   :procedure?  => lambda {|x|    x.is_a?(Proc)},
   :quit        => lambda {||     raise SystemExit},
-  :quotient    => lambda {|x,y|  x.quo(y).truncate},
+  :quotient    => lambda {|x,y|  (x - x.remainder(y)) / y},
   :random      => lambda {|*x|   rand(*x)},
-  :rationalize => lambda {|x,y|  simplify(x.rationalize(y))},
+  :rationalize => lambda {|x,y|  inexact_contagion(simplify(x.rationalize(y)), x, y)},
   :rational?   => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :read        => lambda {|x=$stdin_port| rheme_read(x)},
   :real?       => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :remainder   => lambda {|x,y|  x.remainder(y)},
   :reverse     => lambda {|x|    x.reverse},
-  :round       => lambda {|x|    round_ties_to_even(x)},
+  :round       => lambda {|x|    inexact_contagion(round_ties_to_even(x), x)},
   :sin         => lambda {|x|    CMath.sin(x)},
   :sort        => lambda {|x,p|  x.sort {|*a| callt(p, a) ? -1 : 1}},
   :sqrt        => lambda {|x|    CMath.sqrt(x)},
@@ -281,7 +290,7 @@ $predefined_symbols = {
   :substring   => lambda {|x,a,b| x[a...b]},
   :symbol?     => lambda {|x|    x.is_a?(Symbol)},
   :tan         => lambda {|x|    CMath.tan(x)},
-  :truncate    => lambda {|x|    x.truncate},
+  :truncate    => lambda {|x|    inexact_contagion(x.truncate, x)},
   :vector      => lambda {|*x|   RVector.new(x)},
   :vector?     => lambda {|x|    x.is_a?(RVector)},
   :write       => lambda {|x,y=$stdout| y.write(unread_expr(x)); false},
@@ -311,10 +320,10 @@ $predefined_symbols = {
   :'current-output-port' => lambda {||     $stdout},
   :'current-time'     => lambda {||        Time.now.to_f},
   :'eof-object?'      => lambda {|x|       x == :EOF},
-  :'exact->inexact'   => lambda {|x|       x.to_f},
+  :'exact->inexact'   => lambda {|x|       x * 1.0},
   :'for-each'         => lambda {|p,a,*b|  a.zip(*b) {|args| callt(p, args)}; false},
   :'imag-part'        => lambda {|x|       x.imaginary},
-  :'inexact->exact'   => lambda {|x|       simplify(x.rationalize)},
+  :'inexact->exact'   => lambda {|x|       rheme_to_exact(x)},
   :'input-port?'      => lambda {|x|       x.is_a?(InputPort)},
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
   :'list-ref'         => lambda {|x,i|     x[-2] == :'.' ? x[0..-2].fetch(i) : x.fetch(i)},
@@ -601,7 +610,7 @@ $predefined_symbols = {
 
   def string_to_num(str, radix = 10)
     tok = str.downcase
-    exactness = tok.sub!(/^(#[bodx])?#[ei]/, '\1')
+    exactness_prefix = tok.sub!(/^(#[bodx])?#[ei]/, '\1')
     if tok =~ /^#[bodx]/
       radix = {'b' => 2, 'o' => 8, 'd' => 10, 'x' => 16}.fetch(tok[1])
       tok = tok[2..-1]
@@ -609,7 +618,7 @@ $predefined_symbols = {
     tok.tr!('sfdl', 'e')
     tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
-    !exactness ? num : (str =~ /#i/i) ? num.to_f : simplify(num.rationalize)
+    !exactness_prefix ? num : (str =~ /#i/i) ? num * 1.0 : rheme_to_exact(num)
   end
 
   def raw_string_to_num(str, radix)
