@@ -12,7 +12,11 @@ Rheme differs from R4RS in one important way:
 
    `cons`, `append`, and `set-cdr!` copy their last argument if it is a list.
 
-There are other relatively minor differences. For example, radix prefixes and the radix arguments to `string->number` and `number->string` are only supported for integers.
+The other known incompatibilities are:
+
+* `gcd` and `lcm` do not accept inexact arguments.
+
+* Radix prefixes and the radix arguments to `string->number` and `number->string` are only supported for integers.
 
 ### Extensions to R4RS
 
