@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_5'
+$rheme_version = '0.8_5_1'
 
 require 'cmath'
 require 'readline'
@@ -728,6 +728,8 @@ $predefined_symbols = {
       rescue RhemeError => err
         puts "REPL: #{err}"
         next repl_port.scanner.terminate
+      rescue StopIteration
+        return
       end
       val = toplevel_eval(expr)
       repl_port.scanner.terminate if val.nil?
@@ -740,15 +742,13 @@ $predefined_symbols = {
     $debug_stack = [expr]
     $trace_depth = 0
     reval(expr, $toplevel_env)
-  rescue SystemExit, StopIteration
-    raise
   rescue RhemeError, SystemStackError, IOError, IndexError, ZeroDivisionError => err
     puts "Error while evaluating #{to_string($debug_stack.last)}", err
   rescue StandardError => err
     puts "Error while evaluating #{to_string($debug_stack.last)}", err
     puts err.backtrace.first(6).join("\n")
-  rescue Exception
-    puts "Error while evaluating #{to_string($debug_stack.last)}"
+  rescue Exception => err
+    puts "Error while evaluating #{to_string($debug_stack.last)}" unless SystemExit === err
     raise
   end
 
