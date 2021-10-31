@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_5_1'
+$rheme_version = '0.8_5_2'
 
 require 'cmath'
 require 'readline'
@@ -668,7 +668,15 @@ $predefined_symbols = {
 
   class InputPort < Enumerator
     attr_accessor :io, :scanner, :prompt
-    @@tokenizer = %r{\s+|,@|#\(|[()'`,\[\]\u2019]|"(\\"|[^"])*"|#\\.\w*|;.*|[^\s();"\[\]]+}
+    @@tokenizer = Regexp.new("['\u2019]"        + # single quote
+                             '|\s+'             + # whitespace
+                             '|,@'              + # unquote-splicing
+                             '|#\('             + # vector
+                             '|[()`,\[\]]'      + # paren, backquote or unquote
+                             '|"(\\\\"|[^"])*"' + # string
+                             '|#\\\\.\w*'       + # character
+                             '|;.*'             + # comment
+                             '|[^\s();"\[\]]+'  ) # symbol or number
 
     def initialize(io)
       @scanner = StringScanner.new('')
