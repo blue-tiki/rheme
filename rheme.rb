@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_5_2'
+$rheme_version = '0.8_6'
 
 require 'cmath'
 require 'readline'
@@ -418,8 +418,8 @@ $predefined_symbols = {
     # (define (fun arg1 arg2 ...) ...)
     # (define var val)
     return x[1][0], [:'named-lambda', *x.drop(1)] if x[1].instance_of?(Array)
-    return x[1], x[2] if x.length == 3
-    fail RhemeError, x.length > 3 ? 'Too many arguments' : 'Too few arguments'
+    fail RhemeError, 'Too many arguments' if x.length > 3
+    return x[1], (x[2] || false)
   end
 
   def rheme_delay(source, env, memo = nil, forced = false)
