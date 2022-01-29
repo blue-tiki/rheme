@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_6'
+$rheme_version = '0.8_6_1'
 
 require 'cmath'
 require 'readline'
@@ -38,7 +38,7 @@ module Rheme
 
   def assert_var(x)
     return x if x.is_a?(Symbol)
-    fail RhemeError, "#{to_string(x)} is not a variable"
+    fail RError, "#{to_string(x)} is not a variable"
   end
 
   def tail_call?(x)
@@ -62,13 +62,13 @@ module Rheme
     def set_var(var, value)
       return store(var, value) if key?(var)
       return @outer.set_var(var, value) if @outer
-      fail RhemeError, "Unbound variable: #{Rheme.assert_var(var)}"
+      fail RError, "Unbound variable: #{Rheme.assert_var(var)}"
     end
 
     def [](var)
       return fetch(var) if key?(var)
       return @outer[var] if @outer
-      fail RhemeError, "Unbound variable: #{Rheme.assert_var(var)}"
+      fail RError, "Unbound variable: #{Rheme.assert_var(var)}"
     end
   end
 
@@ -85,11 +85,11 @@ module Rheme
     end
   end
 
-  class Macro      < Lambda;        end
-  class Promise    < Lambda;        end
-  class RVector    < Array;         end
-  class RChar      < String;        end
-  class RhemeError < StandardError; end
+  class Macro   < Lambda;        end
+  class Promise < Lambda;        end
+  class RVector < Array;         end
+  class RChar   < String;        end
+  class RError  < StandardError; end
 
   #
   # Eval
@@ -108,7 +108,7 @@ module Rheme
       else
         # use Array.new here because map doesn't play well with callcc
         fun, *args = Array.new(expr.length) {|i| reval(expr[i], env)}
-        fail RhemeError, "#{to_string(fun)} is not a procedure" unless fun.is_a?(Proc)
+        fail RError, "#{to_string(fun)} is not a procedure" unless fun.is_a?(Proc)
         val = fun.call(*args)
       end
       $debug_stack.pop
@@ -128,7 +128,7 @@ module Rheme
 
   def assert_list(x)
     return x unless x[-2].equal?(:'.')
-    fail RhemeError, "#{to_string(x)} is not a proper list"
+    fail RError, "#{to_string(x)} is not a proper list"
   end
 
   def callt(fun, args)
@@ -170,7 +170,7 @@ module Rheme
     input.peek rescue return :EOF
     read_expr(input)
   rescue StopIteration
-    raise RhemeError, 'Unexpected EOF'
+    raise RError, 'Unexpected EOF'
   end
 
   def rheme_to_exact(n)
@@ -229,7 +229,7 @@ $predefined_symbols = {
   :display     => lambda {|x,y=$stdout| !y.write(x.is_a?(String) ? x : unread_expr(x))},
   :eq?         => lambda {|x,y|  rheme_eq(x, y)},
   :equal?      => lambda {|x,y|  x == y},
-  :error       => lambda {|x,*y| fail RhemeError, [x, *y.map {|s| to_string(s)}].join(' ')},
+  :error       => lambda {|x,*y| fail RError, [x, *y.map {|s| to_string(s)}].join(' ')},
   :eqv?        => lambda {|x,y|  rheme_eqv(x, y)},
   :eval        => lambda {|x,e=$toplevel_env| [:'tail-call()', x, e]},
   :even?       => lambda {|x|    x.even?},
@@ -418,12 +418,12 @@ $predefined_symbols = {
     # (define (fun arg1 arg2 ...) ...)
     # (define var val)
     return x[1][0], [:'named-lambda', *x.drop(1)] if x[1].instance_of?(Array)
-    fail RhemeError, 'Too many arguments' if x.length > 3
+    fail RError, 'Too many arguments' if x.length > 3
     return x[1], (x[2] || false)
   end
 
   def rheme_delay(source, env, memo = nil, forced = false)
-    fail RhemeError, 'Too many arguments' if source.length > 2
+    fail RError, 'Too many arguments' if source.length > 2
     Promise.new(source) do
       unless forced
         val = reval(source[1] || false, env)
@@ -446,7 +446,7 @@ $predefined_symbols = {
   end
 
   def rheme_if(x, env)
-    fail RhemeError, 'Too many arguments' if x.length > 4
+    fail RError, 'Too many arguments' if x.length > 4
     return [:'tail-call()', x[2], env] if reval(x[1], env)
     x.length > 3 && [:'tail-call()', x[3], env]
   end
@@ -456,9 +456,9 @@ $predefined_symbols = {
     vars.each {|v| assert_var(v)}
 
     Lambda.new(source) do |*args|
-      fail RhemeError, 'Too few arguments' if args.length < min_args
+      fail RError, 'Too few arguments' if args.length < min_args
       args[vars.length-1] = args.pop([1 + args.length - vars.length, 0].max) if rest_argp
-      fail RhemeError, 'Too many arguments' if args.length > vars.length
+      fail RError, 'Too many arguments' if args.length > vars.length
       env = Env.new(outer)
       vars.zip(args) {|var, arg| env.let_var(var, arg || false)}
       rheme_begin(source, env, 2)
@@ -522,12 +522,12 @@ $predefined_symbols = {
 
     x.each_with_index do |expr, index|
       if depth == 0
-        fail RhemeError, 'unquote requires exactly one argument' if index < x.length - 1
+        fail RError, 'unquote requires exactly one argument' if index < x.length - 1
         val = rheme_append([val[0..-2], reval(expr, env)])
       elsif depth == 1 && expr.instance_of?(Array) && expr[0] == :'unquote-splicing'
         splice = reval(expr[1], env)
         unless splice.instance_of?(Array) || (index == x.length - 1 && !val.empty?)
-          fail RhemeError, "unquote-splicing: #{to_string(splice)} is not a list"
+          fail RError, "unquote-splicing: #{to_string(splice)} is not a list"
         end
         val = rheme_append([val, splice])
       else
@@ -578,11 +578,11 @@ $predefined_symbols = {
       exp.push(read_expr(input)) until input.peek == terminator
       input.next
       return exp unless exp.include?(:'.')
-      fail RhemeError, "Unexpected '.'" unless exp.instance_of?(Array)
+      fail RError, "Unexpected '.'" unless exp.instance_of?(Array)
       exp[-2..-1] = exp[-1] while exp[-2] == :'.' && exp[-1].instance_of?(Array)
       return exp unless [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
-      fail RhemeError, "Unexpected '.'" 
-    when ')', ']'       then fail RhemeError, "Unexpected #{token}"
+      fail RError, "Unexpected '.'" 
+    when ')', ']'       then fail RError, "Unexpected #{token}"
     when "'", "\u2019"  then [:quote,              read_expr(input)]
     when "`"            then [:quasiquote,         read_expr(input)]
     when ','            then [:unquote,            read_expr(input)]
@@ -590,7 +590,7 @@ $predefined_symbols = {
     when '.'            then :'.'
     when /^[\d.+-]/     then string_to_num(token) rescue token.downcase.to_sym
     when /^"/
-      fail RhemeError, "#{token} is not a string" unless token[-1] == '"'
+      fail RError, "#{token} is not a string" unless token[-1] == '"'
       token[1..-2].gsub(/\\./).each {|x| x[1].tr('n', "\n")}
     when /^#/
       case token.downcase
@@ -601,8 +601,8 @@ $predefined_symbols = {
       when /^#\\.$/     then RChar.new(token[2])
       when /^#[!:]/     then token.downcase.to_sym
       when /^#[eibodx]/
-        string_to_num(token) rescue raise RhemeError, "#{token} is not a number"
-      else fail RhemeError, "Unsupported reader syntax: #{token}"
+        string_to_num(token) rescue raise RError, "#{token} is not a number"
+      else fail RError, "Unsupported reader syntax: #{token}"
       end
     else token.downcase.to_sym
     end
@@ -618,7 +618,8 @@ $predefined_symbols = {
     tok.tr!('sfdl', 'e')
     tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
-    !exactness_prefix ? num : (str =~ /#i/i) ? num * 1.0 : rheme_to_exact(num)
+    return num unless exactness_prefix
+    (str =~ /#i/i) ? 1.0 * num : rheme_to_exact(num)
   end
 
   def raw_string_to_num(str, radix)
@@ -733,7 +734,7 @@ $predefined_symbols = {
         incomplete_expr = repl_port.scanner.rest.gsub(/^\s*(;.*)?|\n$/, '')
         repl_port.prompt = prompt + incomplete_expr
         expr = read_expr(repl_port)
-      rescue RhemeError => err
+      rescue RError => err
         puts "REPL: #{err}"
         next repl_port.scanner.terminate
       rescue StopIteration
@@ -750,7 +751,7 @@ $predefined_symbols = {
     $debug_stack = [expr]
     $trace_depth = 0
     reval(expr, $toplevel_env)
-  rescue RhemeError, SystemStackError, IOError, IndexError, ZeroDivisionError => err
+  rescue RError, SystemStackError, IOError, IndexError, ZeroDivisionError => err
     puts "Error while evaluating #{to_string($debug_stack.last)}", err
   rescue StandardError => err
     puts "Error while evaluating #{to_string($debug_stack.last)}", err
