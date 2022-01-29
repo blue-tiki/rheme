@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.8_6_1'
+$rheme_version = '0.9_0'
 
 require 'cmath'
 require 'readline'
@@ -37,7 +37,7 @@ module Rheme
   extend self
 
   def assert_var(x)
-    return x if x.is_a?(Symbol)
+    return x if x.instance_of?(Symbol)
     fail RError, "#{to_string(x)} is not a variable"
   end
 
@@ -74,7 +74,6 @@ module Rheme
 
   class Lambda < Proc
     attr_reader :source
-
     def initialize(source)
       @source = source
     end
@@ -85,9 +84,19 @@ module Rheme
     end
   end
 
+  class RVector
+    attr_reader :vector
+    def initialize(array)
+      @vector = array
+    end
+
+    def ==(x)
+      x.instance_of?(RVector) && @vector == x.vector
+    end
+  end
+
   class Macro   < Lambda;        end
   class Promise < Lambda;        end
-  class RVector < Array;         end
   class RChar   < String;        end
   class RError  < StandardError; end
 
@@ -97,7 +106,7 @@ module Rheme
 
   def reval(expr, env)
     while true
-      return env[expr] if expr.is_a?(Symbol)
+      return env[expr] if expr.instance_of?(Symbol)
       return expr unless expr.instance_of?(Array) && !expr.empty?
       puts ' ' * $debug_stack.size + to_string(expr) if $trace_eval
 
@@ -127,7 +136,7 @@ module Rheme
   #
 
   def assert_list(x)
-    return x unless x[-2].equal?(:'.')
+    return x if x.instance_of?(Array) && x[-2] != :'.'
     fail RError, "#{to_string(x)} is not a proper list"
   end
 
@@ -138,12 +147,10 @@ module Rheme
 
   def rheme_append(x)
     return [] if x.empty?
-    head = x[0..-2].inject(x[0].take(0), :concat)
+    head = x[0..-2].inject([]) {|a, b| a.concat(assert_list(b))}
     tail = x.last
     return tail if head.empty?
-    return head.concat(tail) if tail.instance_of?(Array)
-    head << :'.' if head.instance_of?(Array)
-    head << tail
+    tail.instance_of?(Array) ? head.concat(tail) : (head << :'.' << tail)
   end
 
   def rheme_callcc(x)
@@ -158,7 +165,7 @@ module Rheme
   end
 
   def rheme_eqv(a, b)
-    return true if rheme_eq(a, b) || (a.is_a?(RChar) && a == b)
+    return true if rheme_eq(a, b) || (a.instance_of?(RChar) && a == b)
     a.is_a?(Numeric) && a == b && rheme_inexact?(a) == rheme_inexact?(b)
   end
 
@@ -280,7 +287,7 @@ $predefined_symbols = {
   :read        => lambda {|x=$stdin_port| rheme_read(x)},
   :real?       => lambda {|x|    x.is_a?(Numeric) && x == x.real},
   :remainder   => lambda {|x,y|  x.remainder(y)},
-  :reverse     => lambda {|x|    x.reverse},
+  :reverse     => lambda {|x|    assert_list(x).reverse},
   :round       => lambda {|x|    inexact_contagion(round_ties_to_even(x), x)},
   :sin         => lambda {|x|    CMath.sin(x)},
   :sort        => lambda {|x,p|  x.sort {|*a| callt(p, a) ? -1 : 1}},
@@ -328,11 +335,11 @@ $predefined_symbols = {
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
   :'list-ref'         => lambda {|x,i|     x[-2] == :'.' ? x[0..-2].fetch(i) : x.fetch(i)},
   :'list->string'     => lambda {|x|       assert_list(x).join},
-  :'list->vector'     => lambda {|x|       RVector.new(assert_list(x))},
+  :'list->vector'     => lambda {|x|       RVector.new(assert_list(x).dup)},
   :'make-polar'       => lambda {|r,t|     Complex.polar(r, t)},
   :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
   :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
-  :'make-vector'      => lambda {|n,x=0|   RVector.new(n, x)},
+  :'make-vector'      => lambda {|n,x=0|   RVector.new(Array.new(n, x))},
   :'number->string'   => lambda {|x,r=[]|  x.is_a?(Integer) ? x.to_s(*r) : x.to_s},
   :'open-input-file'  => lambda {|x|       InputPort.new(File.new(x, 'r'))},
   :'open-output-file' => lambda {|x|       File.new(x, 'w')},
@@ -365,11 +372,11 @@ $predefined_symbols = {
   :'symbol->string'   => lambda {|x|       x.to_s},
   :'trace-eval'       => lambda {||        $trace_eval = true},
   :'untrace-eval'     => lambda {||        $trace_eval = false},
-  :'vector-fill!'     => lambda {|x,y|     x.fill(y)},
-  :'vector-length'    => lambda {|v|       v.length},
-  :'vector-ref'       => lambda {|v,i|     v.fetch(i)},
-  :'vector-set!'      => lambda {|v,i,x|   v.fetch(i); v[i] = x},
-  :'vector->list'     => lambda {|x|       Array.new(x)},
+  :'vector-fill!'     => lambda {|x,y|     x.vector.fill(y)},
+  :'vector-length'    => lambda {|v|       v.vector.length},
+  :'vector-ref'       => lambda {|v,i|     v.vector.fetch(i)},
+  :'vector-set!'      => lambda {|v,i,x|   v.vector.fetch(i); v.vector[i] = x},
+  :'vector->list'     => lambda {|x|       Array.new(x.vector)},
   :'write-char'       => lambda {|x,y=$stdout| y.write(x); false},
   :'interaction-environment'   => lambda {||    $toplevel_env},
   :'scheme-report-environment' => lambda {|v=0| $rheme_env},
@@ -516,18 +523,19 @@ $predefined_symbols = {
     x.length > 1 && [:'tail-call()', x.last, env]
   end
 
-  def rheme_quasiquote(x, env, depth = 1)
-    return x unless x.is_a?(Array)
-    val = x.class.new
-
+  def rheme_quasiquote(form, env, depth = 1, val = [])
+    x = form.instance_of?(RVector) ? form.vector : form
+    return form unless x.instance_of?(Array)
     x.each_with_index do |expr, index|
       if depth == 0
         fail RError, 'unquote requires exactly one argument' if index < x.length - 1
         val = rheme_append([val[0..-2], reval(expr, env)])
       elsif depth == 1 && expr.instance_of?(Array) && expr[0] == :'unquote-splicing'
+        fail RError, 'unquote-splicing requires exactly one argument' if expr.length != 2
         splice = reval(expr[1], env)
-        unless splice.instance_of?(Array) || (index == x.length - 1 && !val.empty?)
-          fail RError, "unquote-splicing: #{to_string(splice)} is not a list"
+        if ((!splice.instance_of?(Array) || splice[-2].equal?(:'.')) &&
+            ( form.instance_of?(RVector) || index < x.length - 1))
+          fail RError, "unquote-splicing: #{to_string(splice)} is not a proper list"
         end
         val = rheme_append([val, splice])
       else
@@ -536,7 +544,7 @@ $predefined_symbols = {
         val << rheme_quasiquote(expr, env, depth)
       end
     end
-    val
+    form.instance_of?(RVector) ? RVector.new(val) : val
   end
 
   def rheme_source(x, env)
@@ -574,14 +582,14 @@ $predefined_symbols = {
     case token
     when '(', '#(', '['
       terminator = token[-1].tr('([', ')]')
-      exp = (token == '#(') ? RVector.new : Array.new
+      exp = []
       exp.push(read_expr(input)) until input.peek == terminator
       input.next
-      return exp unless exp.include?(:'.')
+      return (token == '#(') ? RVector.new(exp) : exp unless exp.include?(:'.')
       fail RError, "Unexpected '.'" unless exp.instance_of?(Array)
       exp[-2..-1] = exp[-1] while exp[-2] == :'.' && exp[-1].instance_of?(Array)
-      return exp unless [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
-      fail RError, "Unexpected '.'" 
+      fail RError, "Unexpected '.'" if [exp[0], *exp[1..-3], exp[-1]].include?(:'.')
+      (token == '#(') ? RVector.new(exp) : exp
     when ')', ']'       then fail RError, "Unexpected #{token}"
     when "'", "\u2019"  then [:quote,              read_expr(input)]
     when "`"            then [:quasiquote,         read_expr(input)]
@@ -619,7 +627,7 @@ $predefined_symbols = {
     tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
     return num unless exactness_prefix
-    (str =~ /#i/i) ? 1.0 * num : rheme_to_exact(num)
+    (str =~ /#i/i) ? num * 1.0 : rheme_to_exact(num)
   end
 
   def raw_string_to_num(str, radix)
@@ -633,7 +641,7 @@ $predefined_symbols = {
 
   def unread_expr(exp, limits = false, depth = 0)
     case exp
-    when RVector then '#' << unread_expr(exp.to_a, limits, depth)
+    when RVector then '#' << unread_expr(exp.vector, limits, depth)
     when Array
       if exp.length == 2
         case exp[0]
@@ -802,7 +810,6 @@ $predefined_symbols = {
 
   class Tracer < Lambda
     attr_reader :target
-
     def initialize(target)
       @target = target
       super(target.is_a?(Lambda) ? target.source : [])
