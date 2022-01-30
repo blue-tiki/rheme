@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.9_0'
+$rheme_version = '0.9_1'
 
 require 'cmath'
 require 'readline'
@@ -443,7 +443,7 @@ $predefined_symbols = {
 
   def rheme_do(x, outer)
     # (do ((var1 init1 step1) (var2 init2 step2) ...) (test ...) ...)
-    env = Env.new(outer, x[1].map {|var, expr| [var, reval(expr, outer)]})
+    env = Env.new(outer, x[1].map {|var, init| [var, reval(init, outer)]})
     until reval(x[2][0], env)
       x.drop(3).each {|expr| reval(expr, env)}
       new_vals = x[1].map {|var| reval(var[2], env) if var.length > 2}
@@ -676,7 +676,7 @@ $predefined_symbols = {
   #
 
   class InputPort < Enumerator
-    attr_accessor :io, :scanner, :prompt
+    attr_accessor :io, :scanner, :line_number, :prompt
     @@tokenizer = Regexp.new("['\u2019]"        + # single quote
                              '|\s+'             + # whitespace
                              '|,@'              + # unquote-splicing
@@ -689,6 +689,7 @@ $predefined_symbols = {
 
     def initialize(io)
       @scanner = StringScanner.new('')
+      @line_number = 0
       @io = io
 
       super() do |collect|
@@ -706,6 +707,7 @@ $predefined_symbols = {
         @prompt = '' unless line == ''
         line && @scanner << line << "\n"
       else
+        @line_number += 1
         line = @io.gets
         line && @scanner << line
       end
@@ -726,6 +728,9 @@ $predefined_symbols = {
       puts(unread_expr(val)) if verbose
     end
   rescue SystemExit
+  rescue Exception
+    print "Line #{input.line_number}: "
+    raise
   end
 
   $stdin_port = InputPort.new($stdin)
@@ -799,7 +804,7 @@ $predefined_symbols = {
     fmt = fmt.gsub(/~%/, "\n")
     args = fmt.scan(/~[AS]|%./i).reject {|x| x == '%%'}.zip(args)
     args.map! {|spec, x| (spec =~ /~S/i || !x.is_a?(String)) ? unread_expr(x) : x}
-    output = fmt.gsub(/~[AS]/i, '%s') % args
+    output = fmt.gsub(/~\n[ \t]*/, '').gsub(/~[AS]/i, '%s') % args
     dest = $stdout if dest == true
     dest ? !dest.write(output) : output
   end
