@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.9_1'
+$rheme_version = '0.9_2'
 
 require 'cmath'
 require 'readline'
@@ -87,7 +87,7 @@ module Rheme
   class RVector
     attr_reader :vector
     def initialize(array)
-      @vector = array
+      @vector = Rheme.assert_list(array)
     end
 
     def ==(x)
@@ -146,11 +146,10 @@ module Rheme
   end
 
   def rheme_append(x)
-    return [] if x.empty?
     head = x[0..-2].inject([]) {|a, b| a.concat(assert_list(b))}
-    tail = x.last
-    return tail if head.empty?
-    tail.instance_of?(Array) ? head.concat(tail) : (head << :'.' << tail)
+    tail = x.empty? ? [] : x.last
+    return head.concat(tail) if tail.instance_of?(Array)
+    head.empty? ? tail : (head << :'.' << tail)
   end
 
   def rheme_callcc(x)
@@ -335,7 +334,7 @@ $predefined_symbols = {
   :'integer->char'    => lambda {|x|       RChar.new(x.chr) rescue false},
   :'list-ref'         => lambda {|x,i|     x[-2] == :'.' ? x[0..-2].fetch(i) : x.fetch(i)},
   :'list->string'     => lambda {|x|       assert_list(x).join},
-  :'list->vector'     => lambda {|x|       RVector.new(assert_list(x).dup)},
+  :'list->vector'     => lambda {|x|       RVector.new(x.dup)},
   :'make-polar'       => lambda {|r,t|     Complex.polar(r, t)},
   :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
   :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
