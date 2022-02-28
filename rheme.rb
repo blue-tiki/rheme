@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.9_2'
+$rheme_version = '0.9_3'
 
 require 'cmath'
 require 'readline'
@@ -197,9 +197,9 @@ module Rheme
   end
 
 $predefined_symbols = {
-  :+           => lambda {|*x|   simplify(x.inject(0, :+))},
-  :*           => lambda {|*x|   simplify(x.inject(1, :*))},
-  :-           => lambda {|x,*y| simplify(y.empty? ? -x : y.inject(x, :-))},
+  :+           => lambda {|*x|   x.inject(0, :+)},
+  :*           => lambda {|*x|   x.inject(1, :*)},
+  :-           => lambda {|x,*y| y.empty? ? -x : y.inject(x, :-)},
   :'/'         => lambda {|x,*y| simplify(y.empty? ? 1.quo(x) : y.inject(x, :quo))},
   :'='         => lambda {|*x|   x.each_cons(2).all? {|a, b| a == b}},
   :'<'         => lambda {|*x|   x.each_cons(2).all? {|a, b| a <  b}},
@@ -242,7 +242,7 @@ $predefined_symbols = {
   :exact?      => lambda {|x|    x.is_a?(Numeric) && !rheme_inexact?(x)},
   :exit        => lambda {|x=0|  exit!(x)},
   :exp         => lambda {|x|    CMath.exp(x)},
-  :expt        => lambda {|x,y|  simplify(x ** y)},
+  :expt        => lambda {|x,y|  x ** y},
   :floor       => lambda {|x|    inexact_contagion(x.floor, x)},
   :force       => lambda {|x|    x.is_a?(Promise) ? x.call : x},
   :format      => lambda {|*x|   rheme_format(*x)},
@@ -339,7 +339,7 @@ $predefined_symbols = {
   :'make-rectangular' => lambda {|r,i|     Complex.rectangular(r, i)},
   :'make-string'      => lambda {|n,x=' '| x.chr.to_s * n},
   :'make-vector'      => lambda {|n,x=0|   RVector.new(Array.new(n, x))},
-  :'number->string'   => lambda {|x,r=[]|  x.is_a?(Integer) ? x.to_s(*r) : x.to_s},
+  :'number->string'   => lambda {|x,r=[]|  simplify(x).to_s(*r)},
   :'open-input-file'  => lambda {|x|       InputPort.new(File.new(x, 'r'))},
   :'open-output-file' => lambda {|x|       File.new(x, 'w')},
   :'output-port?'     => lambda {|x|       x.is_a?(IO) && x.stat.writable?},
@@ -657,12 +657,12 @@ $predefined_symbols = {
       '(' << exp.map {|x| unread_expr(x, limits, depth + 1)}.join(' ') << ')'
     when RChar  then '#\\' << (exp == ' ' ? 'space' : exp == "\n" ? 'newline' : exp)
     when String then exp.dump
-    when Lambda then exp.to_s
     when Proc   then s = $predefined_symbols.key(exp); s ? "#<Proc: #{s}>" : exp.to_s
     when true   then '#t'
     when false  then '#f'
     when nil    then 'NIL' # for debugging
-    else exp.to_s
+    else
+      simplify(exp).to_s
     end
   end
 
