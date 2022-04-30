@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.9_3'
+$rheme_version = '0.9_3_1'
 
 require 'cmath'
 require 'readline'
@@ -85,13 +85,13 @@ module Rheme
   end
 
   class RVector
-    attr_reader :vector
+    attr_reader :array
     def initialize(array)
-      @vector = Rheme.assert_list(array)
+      @array = Rheme.assert_list(array)
     end
 
     def ==(x)
-      x.instance_of?(RVector) && @vector == x.vector
+      x.instance_of?(RVector) && @array == x.array
     end
   end
 
@@ -371,11 +371,11 @@ $predefined_symbols = {
   :'symbol->string'   => lambda {|x|       x.to_s},
   :'trace-eval'       => lambda {||        $trace_eval = true},
   :'untrace-eval'     => lambda {||        $trace_eval = false},
-  :'vector-fill!'     => lambda {|x,y|     x.vector.fill(y)},
-  :'vector-length'    => lambda {|v|       v.vector.length},
-  :'vector-ref'       => lambda {|v,i|     v.vector.fetch(i)},
-  :'vector-set!'      => lambda {|v,i,x|   v.vector.fetch(i); v.vector[i] = x},
-  :'vector->list'     => lambda {|x|       Array.new(x.vector)},
+  :'vector-fill!'     => lambda {|v,x|     v.array.fill(x)},
+  :'vector-length'    => lambda {|v|       v.array.length},
+  :'vector-ref'       => lambda {|v,i|     v.array.fetch(i)},
+  :'vector-set!'      => lambda {|v,i,x|   v.array.fetch(i); v.array[i] = x},
+  :'vector->list'     => lambda {|v|       v.array.dup},
   :'write-char'       => lambda {|x,y=$stdout| y.write(x); false},
   :'interaction-environment'   => lambda {||    $toplevel_env},
   :'scheme-report-environment' => lambda {|v=0| $rheme_env},
@@ -523,7 +523,7 @@ $predefined_symbols = {
   end
 
   def rheme_quasiquote(form, env, depth = 1, val = [])
-    x = form.instance_of?(RVector) ? form.vector : form
+    x = form.instance_of?(RVector) ? form.array : form
     return form unless x.instance_of?(Array)
     x.each_with_index do |expr, index|
       if depth == 0
@@ -617,7 +617,7 @@ $predefined_symbols = {
 
   def string_to_num(str, radix = 10)
     tok = str.downcase
-    exactness_prefix = tok.sub!(/^(#[bodx])?#[ei]/, '\1')
+    set_exactness = tok.sub!(/^(#[bodx])?#[ei]/, '\1')
     if tok =~ /^#[bodx]/
       radix = {'b' => 2, 'o' => 8, 'd' => 10, 'x' => 16}.fetch(tok[1])
       tok = tok[2..-1]
@@ -625,7 +625,7 @@ $predefined_symbols = {
     tok.tr!('sfdl', 'e')
     tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
-    return num unless exactness_prefix
+    return num unless set_exactness
     (str =~ /#i/i) ? num * 1.0 : rheme_to_exact(num)
   end
 
@@ -640,7 +640,7 @@ $predefined_symbols = {
 
   def unread_expr(exp, limits = false, depth = 0)
     case exp
-    when RVector then '#' << unread_expr(exp.vector, limits, depth)
+    when RVector then '#' << unread_expr(exp.array, limits, depth)
     when Array
       if exp.length == 2
         case exp[0]
@@ -651,8 +651,8 @@ $predefined_symbols = {
         end
       end
       if limits
-        return '(...)' if depth >= limits[:depth]
-        exp = exp.first(limits[:length]) << :'...' if exp.length > limits[:length]
+        return '(...)' if depth >= limits[:max_depth]
+        exp = exp.first(limits[:max_len]) << :'...' if exp.length > limits[:max_len]
       end
       '(' << exp.map {|x| unread_expr(x, limits, depth + 1)}.join(' ') << ')'
     when RChar  then '#\\' << (exp == ' ' ? 'space' : exp == "\n" ? 'newline' : exp)
@@ -667,7 +667,7 @@ $predefined_symbols = {
   end
 
   def to_string(exp)
-    unread_expr(exp, {depth: 5, length: 8})
+    unread_expr(exp, {max_depth: 8, max_len: 8})
   end
 
   #
@@ -780,7 +780,7 @@ $predefined_symbols = {
   def rheme_define_macro(x, outer)
     name, source = parse_define_args(x)
     prev = $special_forms[assert_var(name)]
-    if prev && ! (prev.is_a?(Macro) && prev.source == source)
+    if prev && !(prev.is_a?(Macro) && prev.source == source)
       warn "Warning: Redefinition of keyword or macro: #{name}"
     end
     expander = reval(source, outer)
