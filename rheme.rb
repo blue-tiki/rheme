@@ -22,7 +22,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-$rheme_version = '0.9_3_1'
+$rheme_version = '0.9_4'
 
 require 'cmath'
 require 'readline'
@@ -623,10 +623,10 @@ $predefined_symbols = {
       tok = tok[2..-1]
     end
     tok.tr!('sfdl', 'e')
-    tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| z.tr('#', '0')}
+    tok.sub!(/[\d\.]#+(\.#*)?(e.*)?$/) {|z| set_exactness = true; z.tr('#', '0')}
     num = raw_string_to_num(tok, radix)
     return num unless set_exactness
-    (str =~ /#i/i) ? num * 1.0 : rheme_to_exact(num)
+    (str =~ /#e/i) ? rheme_to_exact(num) : num * 1.0
   end
 
   def raw_string_to_num(str, radix)
