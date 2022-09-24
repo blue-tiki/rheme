@@ -1,6 +1,6 @@
 ## Rheme: A Ruby implementation of R4RS Scheme
 
-Rheme is an inplementation of R4RS Scheme that preserves much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme includes all essential features of R4RS Scheme and has some useful extensions as well. Incompatibilities with R4RS are noted below.
+Rheme is an implementation of [R4RS Scheme](https://standards.scheme.org/official/r4rs.pdf) that preserves much of the simplicity of well known tiny implementations of Lisp such as Peter Norvig's [Lispy](https://norvig.com/lispy.html). Rheme includes all essential features of R4RS Scheme and has some useful extensions as well. Incompatibilities with R4RS are noted below.
 
 ### Differences between Rheme and R4RS Scheme
 
@@ -14,7 +14,7 @@ Rheme differs from R4RS in one important way:
 
 The other known incompatibilities are:
 
-* `gcd` and `lcm` do not accept inexact arguments.
+* `gcd` and `lcm` accept only integer arguments.
 
 * Radix prefixes and the radix arguments to `string->number` and `number->string` are only supported for integers.
 
